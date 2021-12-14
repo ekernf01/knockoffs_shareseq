@@ -1,22 +1,14 @@
-# This script runs the E coli knockoff GRN experiments assuming
+# This script runs the share-seq knockoff GRN experiments assuming
 # a blank Ubuntu 18.04 as a starting point.
 
 # Right now I run this by hand to put in passwords and iterate on results. 
-<<<<<<< HEAD
 # It is mostly automated but you may need to keep an eye on it.
-=======
-# It is mostly automated but you may need to e.g. remove the & after the Rscript commands. 
->>>>>>> cfd97fdcac23b2bf0a52cf5c2362563ffde59565
 
 # Retrieve the ecoli demo repo & our package
-git clone https://ekernf01@bitbucket.org/ekernf01/transcriptome_knockoffs.git
+git clone https://github.com/ekernf01/knockoffs_shareseq.git
 # Run it all at once
 # source transcriptome_knockoffs/applications/share-seq/scripts/run_on_aws.sh
-<<<<<<< HEAD
 git clone https://github.com/ekernf01/rlookc.git
-=======
-git clone https://ekernf01@bitbucket.org/ekernf01/rlookc.git
->>>>>>> cfd97fdcac23b2bf0a52cf5c2362563ffde59565
 
 # Install aws cli, build-essential, git, and R v4
 sudo apt-get update
@@ -37,10 +29,10 @@ aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/mouse_tfs            
 aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/share_seq                 ~/datalake/share_seq
 
 # Enter the demo repo.
-cd transcriptome_knockoffs/applications/share-seq
+cd /knockoffs_shareseq
 
 # Change this if you want to run a new set of conditions
-mkdir v11 && cd v11
+mkdir v12 && cd v12
 
 # Install some R packages
 mkdir logs
@@ -56,4 +48,4 @@ aws s3 sync .. s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applicati
 
 # # On laptop, to get results:
 # cd /home/ekernf01/Desktop/jhu/research/projects/knockoffs/applications/share-seq
-# aws s3 sync s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq/v11 v11
+# aws s3 sync s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq/v12 v12
