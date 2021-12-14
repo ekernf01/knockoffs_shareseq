@@ -1,0 +1,11 @@
+Looking for data in ~/datalake 
+
+Loading ChIP data...
+Setting up data.
+Error in file(file, "rt") : cannot open the connection
+In addition: Warning message:
+In file(file, "rt") :
+  cannot open file 'rna_metadata.csv': No such file or directory
+Running minibatch kmeans.
+Running tsne. 
+Making metacells and saving various outputs. 
