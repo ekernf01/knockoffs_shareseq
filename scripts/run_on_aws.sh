@@ -7,7 +7,7 @@
 # Retrieve the ecoli demo repo & our package
 git clone https://github.com/ekernf01/knockoffs_shareseq.git
 # Run it all at once
-# source transcriptome_knockoffs/applications/share-seq/scripts/run_on_aws.sh
+# source knockoffs_shareseq/scripts/run_on_aws.sh
 git clone https://github.com/ekernf01/rlookc.git
 
 # Install aws cli, build-essential, git, and R v4
@@ -29,7 +29,7 @@ aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/mouse_tfs            
 aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/share_seq                 ~/datalake/share_seq
 
 # Enter the demo repo.
-cd /knockoffs_shareseq
+cd knockoffs_shareseq
 
 # Change this if you want to run a new set of conditions
 mkdir v12 && cd v12
@@ -38,8 +38,9 @@ mkdir v12 && cd v12
 mkdir logs
 Rscript ../scripts/install.R # this needs to be run twice for some reason
 nohup Rscript ../scripts/install.R                              &> logs/install.txt
-nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=F  &> logs/cluster.txt 
-nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=T  &> logs/cluster_k_only.txt 
+nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=F  &> logs/cluster.txt &
+nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=T  &> logs/cluster_k_only.txt &
+wait
 nohup Rscript ../scripts/find_regulators.R                      &> logs/knockoffs.txt 
 
 

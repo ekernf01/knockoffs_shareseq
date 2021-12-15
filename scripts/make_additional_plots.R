@@ -1,3 +1,5 @@
+#setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v11")
+source("../scripts/setup.R")
 conditions = read.csv("experiments_to_run.csv")
 # Plot big calibration complicated many facets such oof wow
 all_calibration = knn_test = list()
@@ -58,8 +60,12 @@ all_calibration %>%
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_point(aes(x = nominal_fdr, y = empirical_fdr, color = knockoff_type, shape = knockoff_type)) +
   facet_grid( ~ cell_count_cutoff) +
-  ggtitle("Calibration on SHARE-seq data")
-ggsave("shareseq_naive_vs_gaussian.pdf", width = 6, height = 4)
+  ggtitle("Calibration on SHARE-seq data") + 
+  theme(text = element_text(family = "ArialMT")) +  
+  scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
+ggsave("shareseq_naive_vs_gaussian.pdf", width = 5, height = 2)
+ggsave("shareseq_naive_vs_gaussian.svg", width = 5, height = 2)
 
 # Plot initial ChIP results
 all_calibration %>%
@@ -75,10 +81,13 @@ all_calibration %>%
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_errorbar(aes(x = nominal_fdr, y = empirical_fdr, ymin = empirical_fdr - moe_95, ymax = empirical_fdr + moe_95 ), color = "grey") +
   geom_point(aes(x = nominal_fdr, y = empirical_fdr, ymin = empirical_fdr - moe_95, ymax = empirical_fdr + moe_95 )) +
-  scale_y_continuous(limits = 0:1) +
   facet_grid(~evaluation) +
-  ggtitle("Calibration on SHARE-seq data")
-ggsave("shareseq_chip_initial.pdf", width = 6, height = 2.5)
+  ggtitle("Calibration on SHARE-seq data") + 
+  theme(text = element_text(family = "ArialMT")) +  
+  scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
+ggsave("shareseq_chip_initial.pdf", width = 5, height = 2)
+ggsave("shareseq_chip_initial.svg", width = 5, height = 2)
 
 # Plot results with varied cell count cutoff
 all_calibration %>%
@@ -88,8 +97,14 @@ all_calibration %>%
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_point(aes(x = nominal_fdr, y = empirical_fdr, color = cell_count_cutoff, shape = cell_count_cutoff)) +
   facet_grid(~evaluation) +
-  ggtitle("Calibration on SHARE-seq data")
-ggsave("shareseq_cellcount_cutoff.pdf", width = 6, height = 2.5)
+  ggtitle("Calibration on SHARE-seq data") + 
+  scale_color_discrete(name = "Cell\ncount\ncutoff") +
+  scale_shape_discrete(name = "Cell\ncount\ncutoff") +
+  theme(text = element_text(family = "ArialMT")) +  
+  scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
+ggsave("shareseq_cellcount_cutoff.pdf", width = 5, height = 2)
+ggsave("shareseq_cellcount_cutoff.svg", width = 5, height = 2)
 
 # Plot results with/without error in X
 all_calibration %>%
@@ -103,8 +118,12 @@ all_calibration %>%
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_point(aes(x = nominal_fdr, y = empirical_fdr, color = error_mode, shape = error_mode)) +
   facet_grid(cell_count_cutoff ~ evaluation) +
-  ggtitle("Calibration on SHARE-seq data")
-ggsave("shareseq_measurement_error.pdf", width = 6, height = 5)
+  ggtitle("Calibration on SHARE-seq data") +
+  theme(text = element_text(family = "ArialMT"), legend.position = "bottom") +  
+  scale_x_continuous(breaks = ((0:2)/2) %>% setNames(c("0", "0.5", "1")), limits = 0:1) +  
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
+ggsave("shareseq_measurement_error.pdf", width = 6, height = 3.5)
+ggsave("shareseq_measurement_error.svg", width = 6, height = 3.5)
 
 # Show results with/without conditioning on confounders
 all_calibration %>%
@@ -112,9 +131,15 @@ all_calibration %>%
   ggplot() +
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_point(aes(x = nominal_fdr, y = empirical_fdr, color = condition_on, shape = condition_on)) +
-  facet_grid(ifelse(keratinocyte_only, "keratinocyte", "all") ~ evaluation ) +
-  ggtitle("Calibration on SHARE-seq data")
-ggsave("shareseq_condition_confounders.pdf", width = 6, height = 3)
+  facet_grid(evaluation ~ ifelse(keratinocyte_only, "keratinocyte", "all") ) +
+  ggtitle("Calibration on SHARE-seq data") + 
+  theme(text = element_text(family = "ArialMT"), legend.position = "bottom") +  
+  scale_x_continuous(breaks = ((0:2)/2) %>% setNames(c("0", "0.5", "1")), limits = 0:1) +  
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) +
+  scale_color_discrete(name = "Condition\non") +
+  scale_shape_discrete(name = "Condition\non")
+ggsave("shareseq_condition_confounders.pdf", width = 3.5, height = 6)
+ggsave("shareseq_condition_confounders.svg", width = 3.5, height = 6)
 
 
 # Display KNN exchangeability results
@@ -130,7 +155,8 @@ knn_test %>%
   geom_point(aes(x = prop_not_swapped, y = p_value, color = knockoff_type, shape = knockoff_type)) +
   geom_vline(aes(xintercept = 0.5)) +
   ggtitle("KNN exchangeability diagnostic")
-ggsave(file = "KNN_exchangeability_test.pdf", width = 4, height = 5)
+ggsave(file = "KNN_exchangeability_test.pdf", width = 3, height = 2)
+ggsave(file = "KNN_exchangeability_test.svg", width = 3, height = 2)
 
 # Cell type composition
 to_plot = set_up_share_skin_pseudobulk(conditions, 1)$pseudo_bulk_metadata %>%
