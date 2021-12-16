@@ -1,5 +1,6 @@
 #setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v11")
 source("../scripts/setup.R")
+ggplot2::theme_update(text = element_text(family = "ArialMT"))
 conditions = read.csv("experiments_to_run.csv")
 # Plot big calibration complicated many facets such oof wow
 all_calibration = knn_test = list()
