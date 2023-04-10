@@ -1,19 +1,20 @@
 
 Running condition:
 knockoff_type	condition_on	cell_count_cutoff	error_mode	seed	keratinocyte_only
-34	gaussian	rna15	500	none	1	TRUE
+34	gaussian	rna10	500	none	1	TRUE
 
 Scaling RNA data...
 
 Generating knockoffs
-Estimating optimal shrinkage intensity lambda (correlation matrix): 0.445 
+Estimating optimal shrinkage intensity lambda (correlation matrix): 0.4437 
 Specified shrinkage intensity lambda.var (variance vector): 0 
 
-Specified shrinkage intensity lambda (correlation matrix): 0.445 
+Specified shrinkage intensity lambda (correlation matrix): 0.4437 
 
 
 Checking calibration with simulated targets
-....................................................................................................
+
+ 1....................................................................................................
 Checking calibration with real targets
 .Length check: 1927Computing knockoff statistics. This may take a while.
 ...................................................................................................
