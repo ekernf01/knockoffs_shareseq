@@ -65,15 +65,17 @@ create_experiment_path = function(conditions, condition_idx){
   # The last barcode is off by 48.
   length(intersect(skin_atac_bc, share_seq_skin_metadata$atac.bc))
   get_final_barcode = function(x) x %>% strsplit("\\.") %>% lapply(rev) %>% sapply(extract2, 1) %>% as.numeric
-  corrected_final_barcode = skin_atac_bc %>% get_final_barcode %>% subtract(48) %>% formatC(width = 2, format = "d", flag = "0")
+  corrected_final_barcode = skin_atac_bc %>% get_final_barcode %>% magrittr::subtract(48) %>% formatC(width = 2, format = "d", flag = "0")
   table(corrected_final_barcode)
   skin_atac_bc = gsub("[0-9]{2}$", "", skin_atac_bc)
   skin_atac_bc = paste0(skin_atac_bc, corrected_final_barcode)
   colnames(skin_atac) = skin_atac_bc
   length(intersect(skin_atac_bc, share_seq_skin_metadata$atac.bc))
-}
-supertypes = read.csv(text =
-                        "celltype,supertype
+
+  # Include cell type annotations
+  
+  supertypes = read.csv(text =
+                          "celltype,supertype
 ahighCD34+ bulge,bulge
 alowCD34+ bulge,bulge
 Basal,keratinocyte
@@ -93,8 +95,27 @@ Sebaceous Gland,other
 Spinous,keratinocyte
 TAC-1,keratinocyte
 TAC-2,keratinocyte"
-)
-share_seq_skin_metadata %<>% merge(supertypes, by = "celltype")
+  )
+  share_seq_skin_metadata %<>% merge(supertypes, by = "celltype")
+}
+
+# Skin ATAC feature extraction: global motif activity per cell
+{  
+  mouse_motifs <- TFBSTools::getMatrixSet(
+    JASPAR2018::JASPAR2018, 
+    opts = list(
+      "species" = 10090, # mouse; 9606 is human
+      "all_versions" = TRUE
+    )
+  )
+  motif_ix <- motifmatchr::matchMotifs(mouse_motifs, GRanges(
+    seqnames = skin_atac_peaks$V1, 
+    ranges = IRanges(skin_atac_peaks$V2, skin_atac_peaks$V3)), 
+    genome = "mm10"
+  ) 
+}
+
+
 
 # Load chip-atlas target gene lists
 {

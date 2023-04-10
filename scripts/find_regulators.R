@@ -5,6 +5,9 @@ conditions = read.table(
   header = T,
   text =
     "knockoff_type condition_on cell_count_cutoff error_mode seed keratinocyte_only
+gaussian motif 10 none 1 F
+gaussian motif 100 none 1 F
+gaussian motif 500 none 1 F
 naive none  10 none 1 F
 naive none 100 none 1 F
 naive none 500 none 1 F
@@ -40,11 +43,15 @@ gaussian rna15  10 none 1 T
 gaussian rna15 100 none 1 T
 gaussian rna15 500 none 1 T"
 )
+
+
+
 write.csv(conditions, "experiments_to_run.csv")
 old_wd = getwd()
 
 do_one = function(condition_idx){
   set.seed(conditions[condition_idx,"seed"])
+  Sys.sleep(condition_idx * 120) # This spreads out the peak memory load
   dir.create("logs")
   withr::with_output_sink(file.path("logs", condition_idx), {
     # Set up environment
@@ -77,6 +84,9 @@ do_one = function(condition_idx){
       if(condition_on == "atac"){
         atac_pca = irlba::prcomp_irlba(t(normalized_data$pseudo_bulk_atac), n = 10)
         covariates = cbind( normalized_data$mouse_tf_expression_noisy, atac_pca$x)
+      } else if(condition_on == "motif"){
+        skin_atac_motif_activity = t(motifmatchr::motifMatches(motif_ix)) %*% normalized_data$pseudo_bulk_atac
+        covariates = cbind( normalized_data$mouse_tf_expression_noisy, t(skin_atac_motif_activity))
       } else if(condition_on == "rna5"){
         rna_pca = irlba::prcomp_irlba(normalized_data$pseudo_bulk_rna, n = 5)
         covariates = cbind( normalized_data$mouse_tf_expression_noisy, rna_pca$x)
@@ -291,7 +301,7 @@ do_one = function(condition_idx){
       DF[["is_verified"]][is.na(DF[["is_verified"]])] = F
       # This fixes unknown edges (those lacking ChIP data).
       DF[["is_verified"]][ !( DF[["Gene1"]] %in% mouse_chip[["Gene1"]] ) ] = NA
-
+      # TODO: treat TF-TF edsges as unknown to avoid spousal issues.
 
       # Compute calibration!
       calibration = list()
@@ -327,9 +337,11 @@ do_one = function(condition_idx){
   })
 }
 cat("Starting threads for different experiments. See logs/ for progress.\n")
-results = parallel::mclapply(seq(nrow(conditions)), do_one, mc.cores = parallel::detectCores())
+results = parallel::mclapply(seq(nrow(conditions)), do_one, mc.cores = parallel::detectCores()-1)
 saveRDS(results, "logs/mclapply_output.Rdata")
 conditions %>%
   cbind(successfully_ran = sapply(results, is.null)) %>%
   write.table(sep = "\t", quote = F)
+# Redo failed runs
+parallel::mclapply(which(!sapply(results, is.null)), do_one, mc.cores = parallel::detectCores()-1)
 cat("Done.\n")

@@ -10,10 +10,10 @@ versions::install.dates(
   dates = "2021-11-05",
   lib = Sys.getenv("R_LIBS_USER")
 )
-
 BiocManager::install(
   version = 3.14,
-  pkgs = c( "DelayedArray", "scater", "scran", "mbkmeans", "HDF5Array" ),
+  pkgs = c( "DelayedArray", "scater", "scran", "mbkmeans","JASPAR2018",
+            "HDF5Array", "motifmatchr", "BSgenome.Mmusculus.UCSC.mm10" ),
   lib = Sys.getenv("R_LIBS_USER")
 )
 

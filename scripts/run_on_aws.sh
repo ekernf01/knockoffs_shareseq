@@ -16,8 +16,7 @@ sudo apt-get install -y build-essential awscli
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
 sudo add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/'
 sudo apt update
-sudo apt install -y libssl-dev libcurl4-openssl-dev libxml2-dev
-sudo apt install -y libgmp-dev
+sudo apt install -y libssl-dev libcurl4-openssl-dev libxml2-dev libgmp-dev gsl-bin libgsl0-dev
 sudo apt install -y r-base r-base-dev r-base-core
 R --version #should be 4.1.2 
 aws configure
@@ -36,12 +35,15 @@ mkdir v12 && cd v12
 
 # Install some R packages
 mkdir logs
+Rscript ../scripts/install.R 
 Rscript ../scripts/install.R # this needs to be run twice for some reason
 nohup Rscript ../scripts/install.R                              &> logs/install.txt
 nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=F  &> logs/cluster.txt &
 nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=T  &> logs/cluster_k_only.txt &
 wait
 nohup Rscript ../scripts/find_regulators.R                      &> logs/knockoffs.txt 
+wait 
+nohup Rscript ../scripts/make_additional_plots.R
 
 
 # export results 

@@ -152,12 +152,16 @@ knn_test %>%
   as.data.frame() %>%
   cbind(conditions) %>%
   subset(condition_on == "none" & error_mode == "none") %>%
+  reshape2::melt(measure = c("prop_not_swapped", "p_value")) %>% 
+  subset(variable %in% c("prop_not_swapped", "p_value")) %>%
   ggplot() +
-  geom_point(aes(x = prop_not_swapped, y = p_value, color = knockoff_type, shape = knockoff_type)) +
-  geom_vline(aes(xintercept = 0.5)) +
+  geom_point(aes(x = as.character(cell_count_cutoff), color = knockoff_type, y = value), stat = "identity", position = "dodge") +
+  facet_wrap(~variable) +
+  xlab("Cell count cutoff") + 
+  geom_hline(aes(yintercept = value), data = data.frame(value = 0.5, variable = "prop_not_swapped")) + 
   ggtitle("KNN exchangeability diagnostic")
-ggsave(file = "KNN_exchangeability_test.pdf", width = 3, height = 2)
-ggsave(file = "KNN_exchangeability_test.svg", width = 3, height = 2)
+ggsave(file = "KNN_exchangeability_test.pdf", width = 4, height = 3)
+ggsave(file = "KNN_exchangeability_test.svg", width = 4, height = 3)
 
 # Cell type composition
 to_plot = set_up_share_skin_pseudobulk(conditions, 1)$pseudo_bulk_metadata %>%
