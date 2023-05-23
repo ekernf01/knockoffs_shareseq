@@ -5,19 +5,23 @@ conditions = read.table(
   header = T,
   text =
     "knockoff_type condition_on cell_count_cutoff error_mode seed keratinocyte_only
-gaussian motif 10 none 1 F
-gaussian motif 100 none 1 F
-gaussian motif 500 none 1 F
+
+gaussian motif 10 none 1 T
+gaussian motif 100 none 1 T
+gaussian motif 500 none 1 T
 naive none  10 none 1 F
 naive none 100 none 1 F
 naive none 500 none 1 F
-gaussian none  10 none 1 F
-gaussian none 100 none 1 F
-gaussian none 500 none 1 F
+gaussian none 500 downsample 1 F
 gaussian none  10 resample 1 F
 gaussian none 100 resample 1 F
 gaussian none 500 resample 1 F
-gaussian none 500 downsample 1 F
+gaussian none  10 none 1 F
+gaussian none 100 none 1 F
+gaussian none 500 none 1 F
+gaussian motif 10 none 1 F
+gaussian motif 100 none 1 F
+gaussian motif 500 none 1 F
 gaussian atac  10 none 1 F
 gaussian atac 100 none 1 F
 gaussian atac 500 none 1 F
@@ -30,6 +34,9 @@ gaussian rna10 500 none 1 F
 gaussian rna15  10 none 1 F
 gaussian rna15 100 none 1 F
 gaussian rna15 500 none 1 F
+gaussian motif  10 none 1 T
+gaussian motif 100 none 1 T
+gaussian motif 500 none 1 T
 gaussian atac  10 none 1 T
 gaussian atac 100 none 1 T
 gaussian atac 500 none 1 T

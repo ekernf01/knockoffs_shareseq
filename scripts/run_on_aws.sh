@@ -1,31 +1,33 @@
 # This script runs the share-seq knockoff GRN experiments assuming
 # a blank Ubuntu 18.04 as a starting point.
 
-# Right now I run this by hand to put in passwords and iterate on results. 
-# It is mostly automated but you may need to keep an eye on it.
-
 # Retrieve the ecoli demo repo & our package
 git clone https://github.com/ekernf01/knockoffs_shareseq.git
-# Run it all at once
-# source knockoffs_shareseq/scripts/run_on_aws.sh
 git clone https://github.com/ekernf01/rlookc.git
 
-# Install aws cli, build-essential, git, and R v4
-sudo apt-get update
-sudo apt-get install -y build-essential awscli
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
-sudo add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/'
-sudo apt update
-sudo apt install -y libssl-dev libcurl4-openssl-dev libxml2-dev libgmp-dev gsl-bin libgsl0-dev
-sudo apt install -y r-base r-base-dev r-base-core
-R --version #should be 4.1.2 
-aws configure
+# Install aws cli, build-essential (c compiler), git, curl, and R v4
+echo "Installing software..."
+sudo apt-get update -qq
+sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core
+R_VERSION=4.1.2
+curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-${R_VERSION}_1_amd64.deb
+sudo gdebi r-${R_VERSION}_1_amd64.deb
+sudo ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R
+sudo ln -s /opt/R/${R_VERSION}/bin/Rscript /usr/local/bin/Rscript
+R --version # 4.1.2 desired
 
 # Retrieve the datasets used.
-aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/chip-atlas/mouse/targets  ~/datalake/chip-atlas/mouse/targets
-aws s3 cp s3://cahanlab/eric.kernfeld/datalake/chip-atlas/mouse/experimentList.tab.standard.fields.only.tab ~/datalake/chip-atlas/mouse/
-aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/mouse_tfs                 ~/datalake/mouse_tfs
-aws s3 cp --recursive s3://cahanlab/eric.kernfeld/datalake/share_seq                 ~/datalake/share_seq
+echo "Fetching data..."
+wget https://zenodo.org/record/6573413/files/chip-atlas.zip
+wget https://zenodo.org/record/6573413/files/share_seq.zip
+wget https://zenodo.org/record/6573413/files/mouse_tfs.zip
+unzip chip-atlas.zip && mv chip-atlas\ \(copy\) chip-atlas
+unzip share_seq.zip
+unzip mouse_tfs.zip
+mkdir ~/datalake
+mv chip-atlas ~/datalake
+mv share_seq ~/datalake
+mv mouse_tfs ~/datalake
 
 # Enter the demo repo.
 cd knockoffs_shareseq
@@ -46,9 +48,8 @@ wait
 nohup Rscript ../scripts/make_additional_plots.R
 
 
-# export results 
-aws s3 sync .. s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq
-
+# # Optional step: export results (edit this to point to your S3)
+# aws s3 sync .. s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq
 # # On laptop, to get results:
 # cd /home/ekernf01/Desktop/jhu/research/projects/knockoffs/applications/share-seq
 # aws s3 sync s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq/v12 v12

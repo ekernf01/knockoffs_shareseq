@@ -1,4 +1,0 @@
-
-Running condition:
-knockoff_type	condition_on	cell_count_cutoff	error_mode	seed	keratinocyte_only
-13	gaussian	none	500	downsample	1	FALSE
