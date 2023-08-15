@@ -1,15 +1,15 @@
-# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v11")
+# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v13")
 
 # Setup
 suppressPackageStartupMessages({
-  library(ggplot2)
-  library(Matrix)
-  library(magrittr)
-  library(DelayedArray)
-  library(HDF5Array)
-  library(scater)
-  library(scran)
-  library(optparse)
+  library("ggplot2")
+  library("Matrix")
+  library("magrittr")
+  library("DelayedArray")
+  library("HDF5Array")
+  library("scater")
+  library("scran")
+  library("optparse")
 })
 set.seed(0)
 
@@ -99,22 +99,31 @@ TAC-2,keratinocyte"
   share_seq_skin_metadata %<>% merge(supertypes, by = "celltype")
 }
 
-# Skin ATAC feature extraction: global motif activity per cell
+# Skin ATAC feature extraction & pruning: global motif activity per cell and motif-peak-gene network construction
 {  
-  mouse_motifs <- TFBSTools::getMatrixSet(
-    JASPAR2018::JASPAR2018, 
-    opts = list(
-      "species" = 10090, # mouse; 9606 is human
-      "all_versions" = TRUE
-    )
+  motif_info = list(
+    mouse_motifs <- TFBSTools::getMatrixSet(
+      JASPAR2018::JASPAR2018, 
+      opts = list(
+        "species" = c(10090), # mouse
+        "all_versions" = TRUE
+      )
+    ),
+    human_motifs <- TFBSTools::getMatrixSet(
+      JASPAR2018::JASPAR2018, 
+      opts = list(
+        "species" = c( 9606), # human
+        "all_versions" = TRUE
+      )
+    ),
+    all_motifs = c(mouse_motifs, human_motifs)
   )
-  motif_ix <- motifmatchr::matchMotifs(mouse_motifs, GRanges(
+  motif_info$motif_ix <- motifmatchr::matchMotifs(motif_info$all_motifs, GRanges(
     seqnames = skin_atac_peaks$V1, 
     ranges = IRanges(skin_atac_peaks$V2, skin_atac_peaks$V3)), 
     genome = "mm10"
-  ) 
+  )
 }
-
 
 
 # Load chip-atlas target gene lists
@@ -265,7 +274,8 @@ set_up_share_skin_pseudobulk = function(conditions, i){
     }
   }
 
-  # Normalize RNA data by total counts. Compute some gene-level summaries.
+  # Normalize by total counts. Compute some gene-level summaries.
+  pseudo_bulk_atac      = sweep(pseudo_bulk_atac,     2, colSums(pseudo_bulk_atac      ), FUN = "/")*1e6
   pseudo_bulk_rna       = sweep(pseudo_bulk_rna,       2, colSums(pseudo_bulk_rna      ), FUN = "/")*1e6
   pseudo_bulk_rna_noisy = sweep(pseudo_bulk_rna_noisy, 2, colSums(pseudo_bulk_rna_noisy), FUN = "/")*1e6
   gene_metadata = data.frame(

@@ -16,6 +16,8 @@ RUN apt-get install -yq awscli
 RUN apt-get install -yq gdebi-core 
 RUN apt-get install -yq git
 RUN apt-get install -yq curl
+RUN apt-get install -yq cmake 
+RUN apt-get install -yq libudunits2-dev
 RUN R_VERSION=4.1.2 && curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-${R_VERSION}_1_amd64.deb 
 RUN R_VERSION=4.1.2 && gdebi -n r-${R_VERSION}_1_amd64.deb
 RUN R_VERSION=4.1.2 && ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R && ln -s /opt/R/${R_VERSION}/bin/Rscript /usr/local/bin/Rscript

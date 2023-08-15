@@ -67,13 +67,13 @@ run_clustering = function(keratinocyte_only){
     do_one_cluster = function(cluster_idx){
       totals = assay(single_cell_experiments$skin_rna_sce, "logcounts")[, 2] %>%
         raise_to_power(2, .) %>%
-        subtract(1) %>%
+        magrittr::subtract(1) %>%
         sum
       factor_to_get_back_to_fucking_cpm = 1e6 / totals
       if(sum(clusters==cluster_idx)>1){
         cluster_variances = assay(single_cell_experiments$skin_rna_sce, "logcounts")[, clusters==cluster_idx] %>%
           raise_to_power(2, .) %>%
-          subtract(1) %>%
+          magrittr::subtract(1) %>%
           multiply_by(factor_to_get_back_to_fucking_cpm) %>%
           DelayedMatrixStats::rowVars()
       } else {

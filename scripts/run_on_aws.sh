@@ -8,7 +8,7 @@ git clone https://github.com/ekernf01/rlookc.git
 # Install aws cli, build-essential (c compiler), git, curl, and R v4
 echo "Installing software..."
 sudo apt-get update -qq
-sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core
+sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core cmake libudunits2-dev
 R_VERSION=4.1.2
 curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-${R_VERSION}_1_amd64.deb
 sudo gdebi r-${R_VERSION}_1_amd64.deb
