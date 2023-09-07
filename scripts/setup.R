@@ -129,42 +129,32 @@ TAC-2,keratinocyte"
 # Load chip-atlas target gene lists
 {
   cat("\nLoading ChIP data...\n")
+  average_signals = function(DF){
+    new_df = DF[1:2]
+    new_df$average_signal = DF[-(1:2)] %>% rowMeans()
+    return(new_df)
+  }
   withr::with_dir(
     DATALAKE,
     {
-      chip_meta = read.table("chip-atlas/mouse/experimentList.tab.standard.fields.only.tab",
-                             sep = "\t", header = F)
-      colnames(chip_meta) =  c("Experimental ID",
-                               "Genome assembly"	,
-                               "Antigen class",
-                               "Antigen",
-                               "Cell type class",
-                               "Cell type",
-                               "Cell type description",
-                               "Processing logs")
-      chip_meta = subset(chip_meta, `Genome assembly`=="mm10")
-      chip_meta %<>% subset(`Antigen class`=="TFs and others")
-      chip_meta %<>% subset(`Cell type class`=="Epidermis")
-      chip_files =
-        list.files("chip-atlas/mouse/targets", full = T)
-      names(chip_files) = gsub(".10.tsv$", "", basename(chip_files))
-      chip_files = chip_files[unique(chip_meta[["Antigen"]])]
+      chip_files = list.files(
+        paste0("chip-atlas/filtered_by_celltype/skin/", 
+               c("hg19",
+                 "hg38",
+                 "mm10",
+                 "mm9")
+        ), 
+        full = T)
       mouse_chip =
-        lapply(chip_files, read.csv, sep = "\t", header = T) %>%
-        lapply(extract2, 1) %>%
-        mapply(
-          function(X, tf) {
-            data.frame("Gene1" = gsub(".10.tsv$", "", basename(tf)), "Gene2" = X)
-          },
-          X = .,
-          tf = chip_files,
-          SIMPLIFY = F) %>%
+        lapply(chip_files, read.table, header = T) %>%
+        lapply(average_signals) %>%
+        lapply(subset, average_signal>mean(average_signal)) %>% 
         data.table::rbindlist() %>%
         dplyr::mutate(is_verified = T)
     }
   )
   frequency_in_chip_data =
-    mouse_chip[["Gene1"]] %>%
+    mouse_chip[["regulator"]] %>%
     table %>%
     as.data.frame() %>%
     set_colnames(c("Gene1", "chip_freq"))
@@ -305,6 +295,7 @@ set_up_share_skin_pseudobulk = function(conditions, i){
     pseudo_bulk_rna            = pseudo_bulk_rna,
     pseudo_bulk_rna_noisy      = pseudo_bulk_rna_noisy,
     pseudo_bulk_rna_var        = pseudo_bulk_rna_var,
-    pseudo_bulk_atac           = pseudo_bulk_atac
+    pseudo_bulk_atac           = pseudo_bulk_atac,
+    motif_activity = t(motifmatchr::motifMatches(motif_info$motif_ix)) %*% pseudo_bulk_atac
   ) )
 }

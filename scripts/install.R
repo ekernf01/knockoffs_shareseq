@@ -18,6 +18,7 @@ devtools 2.4.2
 Seurat 4.0.5
 BiocManager 1.30.16
 knockoff 0.3.3
+vita 1.0.0
 optparse 1.7.1"
 )
 for(i in rownames(pv)){
@@ -38,6 +39,8 @@ BiocManager::install(
     "mbkmeans",
     "JASPAR2018", 
     "HDF5Array",
+    "GENIE3",
+    "doRNG",
     "motifmatchr", 
     'BiocGenerics', 
     'DelayedMatrixStats',
@@ -46,3 +49,4 @@ BiocManager::install(
     )
 )
 install.packages("~/rlookc", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))
+install.packages("https://cran.r-project.org/src/contrib/Archive/BINCO/BINCO_0.1-1.tar.gz", from = "source", repo = NULL)

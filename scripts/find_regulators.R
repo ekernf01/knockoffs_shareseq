@@ -4,52 +4,25 @@ source("../scripts/setup.R")
 conditions = read.table(
   header = T,
   text =
-    "knockoff_type condition_on cell_count_cutoff error_mode seed keratinocyte_only
-gaussian motif 10 none 1 T
-gaussian motif 100 none 1 T
-gaussian motif 500 none 1 T
-naive none  10 none 1 F
-naive none 100 none 1 F
-naive none 500 none 1 F
-gaussian none 500 downsample 1 F
-gaussian none  10 resample 1 F
-gaussian none 100 resample 1 F
-gaussian none 500 resample 1 F
-gaussian none  10 none 1 F
-gaussian none 100 none 1 F
-gaussian none 500 none 1 F
-gaussian motif 10 none 1 F
-gaussian motif 100 none 1 F
-gaussian motif 500 none 1 F
-gaussian atac  10 none 1 F
-gaussian atac 100 none 1 F
-gaussian atac 500 none 1 F
-gaussian rna5  10 none 1 F
-gaussian rna5 100 none 1 F
-gaussian rna5 500 none 1 F
-gaussian rna10  10 none 1 F
-gaussian rna10 100 none 1 F
-gaussian rna10 500 none 1 F
-gaussian rna15  10 none 1 F
-gaussian rna15 100 none 1 F
-gaussian rna15 500 none 1 F
-gaussian motif  10 none 1 T
-gaussian motif 100 none 1 T
-gaussian motif 500 none 1 T
-gaussian atac  10 none 1 T
-gaussian atac 100 none 1 T
-gaussian atac 500 none 1 T
-gaussian rna5  10 none 1 T
-gaussian rna5 100 none 1 T
-gaussian rna5 500 none 1 T
-gaussian rna10  10 none 1 T
-gaussian rna10 100 none 1 T
-gaussian rna10 500 none 1 T
-gaussian rna15  10 none 1 T
-gaussian rna15 100 none 1 T
-gaussian rna15 500 none 1 T"
+    "knockoff_type tf_activity condition_on cell_count_cutoff error_mode seed keratinocyte_only require_motif_support
+gaussian rna none 10 none 1 F F
+gaussian rna none 100 none 1 F F
+gaussian rna none 500 none 1 F F
+naive rna none  10 none 1 F F
+naive rna none 100 none 1 F F
+naive rna none 500 none 1 F F
+gaussian rna none 500 downsample 1 F F
+gaussian rna none  10 resample 1 F F
+gaussian rna none 100 resample 1 F F
+gaussian rna none 500 resample 1 F F
+gaussian motif none 10 none 1 F F
+gaussian motif none 100 none 1 F F
+gaussian motif none 500 none 1 F F
+")
+conditions = rbind(
+  conditions, 
+  dplyr::mutate(conditions, keratinocyte_only=T)
 )
-
 
 
 write.csv(conditions, "experiments_to_run.csv")
@@ -73,7 +46,7 @@ do_one = function(condition_idx){
     withr::with_dir( new_wd, {
       # For this analysis, we want expression centered and scaled
       # For genes with zero variance, esp after downsampling,
-      # there's too much brittle software downstream. (Not all mine! Heehee!)
+      # there's too much brittle software downstream. (Not all of it mine!)
       # So we randomize instead of keeping constants or zeroes.
       cat("\nScaling RNA data...\n")
       safe_scale = function(x, ...){
@@ -86,25 +59,32 @@ do_one = function(condition_idx){
       normalized_data$mouse_non_tf_expression   %<>% apply(2, safe_scale)
       normalized_data$mouse_tf_expression       %<>% apply(2, safe_scale)
       normalized_data$mouse_tf_expression_noisy %<>% apply(2, safe_scale)
-
-      # Get ATAC PC's
-      if(condition_on == "atac"){
-        atac_pca = irlba::prcomp_irlba(t(normalized_data$pseudo_bulk_atac), n = 10)
-        covariates = cbind( normalized_data$mouse_tf_expression_noisy, atac_pca$x)
-      } else if(condition_on == "motif"){
-        skin_atac_motif_activity = t(motifmatchr::motifMatches(motif_info$motif_ix)) %*% normalized_data$pseudo_bulk_atac
-        covariates = cbind( normalized_data$mouse_tf_expression_noisy, t(skin_atac_motif_activity))
-      } else if(condition_on == "rna5"){
-        rna_pca = irlba::prcomp_irlba(normalized_data$pseudo_bulk_rna, n = 5)
-        covariates = cbind( normalized_data$mouse_tf_expression_noisy, rna_pca$x)
-      } else if(condition_on == "rna10"){
-        rna_pca = irlba::prcomp_irlba(normalized_data$pseudo_bulk_rna, n = 10)
-        covariates = cbind( normalized_data$mouse_tf_expression_noisy, rna_pca$x)
-      } else if(condition_on == "rna15"){
-        rna_pca = irlba::prcomp_irlba(normalized_data$pseudo_bulk_rna, n = 15)
-        covariates = cbind( normalized_data$mouse_tf_expression_noisy, rna_pca$x)
+      normalized_data$motif_activity %<>% apply(2, safe_scale)
+      # Choose a measure of TF activity
+      if(tf_activity == "motif"){
+        tf_activity = normalized_data$motif_activity
+      } else if(tf_activity=="rna"){
+        tf_activity = normalized_data$mouse_tf_expression
+      } else{
+        stop("tf_activity must be 'rna' or 'motif'")
+      }
+      # Add simulated measurement error to TF activity
+      if(error_mode == "none"){
+        tf_activity_before_noise = tf_activity
       } else {
-        covariates = normalized_data$mouse_tf_expression_noisy
+        stopifnot("If tf_activity is 'motif', then error_mode must be 'none'."=tf_activity=="rna")
+        tf_activity = normalized_data$mouse_tf_expression_noisy
+        tf_activity_before_noise = normalized_data$mouse_tf_expression
+      } 
+      # Add covariates / surrogate variables
+      if(condition_on == "pca"){
+        atac_pca = irlba::prcomp_irlba(t(normalized_data$pseudo_bulk_atac), n = 10)
+        rna_pca = irlba::prcomp_irlba(normalized_data$pseudo_bulk_rna, n = 10)
+        covariates = cbind( tf_activity, atac_pca$x, rna_pca$x)
+      } else if(condition_on == "none"){
+        covariates = tf_activity
+      } else {
+        stop("condition_on must be 'pca' or 'none'.")
       }
       # Generate knockoffs
       cat("\nGenerating knockoffs\n")
@@ -126,13 +106,13 @@ do_one = function(condition_idx){
         stop("Unknown type of knockoffs requested by upstream code\n.")
       }
       # Strip out extra covariates
-      knockoffs = knockoffs[,1:ncol(normalized_data$mouse_tf_expression)]
+      knockoffs = knockoffs[,1:ncol(tf_activity)]
       # Save knockoff realization
       dir.create("output_knockoffs", recursive = T, showWarnings = F)
       saveRDS(knockoffs, "output_knockoffs/knockoffs.Rda")
-      saveRDS(normalized_data$mouse_tf_expression_noisy, "output_knockoffs/original_features.Rda")
+      saveRDS(tf_activity, "output_knockoffs/original_features.Rda")
 
-      # This is a fast way to compute variable importance statstics.
+      # This is a fast way to compute variable importance statistics.
       dfmax = 21
       fast_lasso_penalty = function(X, X_k, y) {
         cat(".")
@@ -151,40 +131,21 @@ do_one = function(condition_idx){
       dir.create("calibration", showWarnings = F, recursive = T)
       calibration_typical = rlookc::simulateY(
         n_sim = 100,
-        X = normalized_data$mouse_tf_expression,
+        active_set_size = pmax(1, rpois(2, n = 100)),
+        X = tf_activity_before_noise,
+        X_observed = tf_activity,
         knockoffs = knockoffs,
         statistic = fast_lasso_penalty,
-        plot_savepath = "calibration/average_case_calibration_X_exact.pdf"
+        plot_savepath = "calibration/average_case_calibration.pdf"
       )
-      write.csv(calibration_typical$calibration$fdr, "calibration/average_case_calibration_X_exact.csv")
+      write.csv(calibration_typical$calibration$fdr, "calibration/average_case_calibration.csv")
 
-      if(error_mode != "none"){
-        cat("\nChecking calibration with simulated targets and specified errors in X \n")
-        dir.create("calibration", showWarnings = F, recursive = T)
-        calibration_typical = rlookc::simulateY(
-          n_sim = 100,
-          X = normalized_data$mouse_tf_expression,
-          X_observed = normalized_data$mouse_tf_expression_noisy,
-          knockoffs = knockoffs,
-          statistic = fast_lasso_penalty,
-          plot_savepath = "calibration/average_case_calibration_X_errors.pdf"
-        )
-        write.csv(calibration_typical$calibration$fdr, "calibration/average_case_calibration_X_errors.csv")
-      }
+
       # Find regulators of only non-TF genes.
-      # We do this to avoid "spousal problems", since spouses may be linked in 
+      # We do this to avoid "spousal problems", since spouses may be linked in
       # the MRF structure needed to express a given causal DAG
       # even when they are not linked in the corresponding DAG.
       cat("\nChecking calibration with real targets\n")
-      cat(
-        "Length check:",
-        length(
-          fast_lasso_penalty(
-            y   = normalized_data$mouse_non_tf_expression[,1],
-            X   = normalized_data$mouse_tf_expression,
-            X_k = knockoffs)
-        )
-      )
       cat("Computing knockoff statistics. This may take a while.\n")
       w = lapply(
         seq(ncol(normalized_data$mouse_non_tf_expression)),
@@ -192,7 +153,7 @@ do_one = function(condition_idx){
           if(i %% 100 == 0){ cat( "\n" ); cat(i); cat(" ")}
           fast_lasso_penalty(
             y   = normalized_data$mouse_non_tf_expression[,i],
-            X   = normalized_data$mouse_tf_expression,
+            X   = tf_activity,
             X_k = knockoffs
           )
         }
@@ -218,32 +179,32 @@ do_one = function(condition_idx){
       # Save results
       write.csv(DF_tf_target, "output_knockoffs/knockoff_stats.csv", append = T, col.names = F)
       rm("DF_tf_target"); gc()
-      
-      # We will check FDR for a subset of TF-target hypotheses supported by a motif in a region whose chromatin accessibility 
+
+      # We will check FDR for a subset of TF-target hypotheses supported by a motif in a region whose chromatin accessibility
       # correlates with the target gene expression.
       gene_coords = biomaRt::getBM(attributes = c("mgi_symbol", "chromosome_name", "start_position", "end_position"),
                           filters = "mgi_symbol",
                           values = normalized_data$gene_metadata$Gene1,
                           mart = biomaRt::useMart("ENSEMBL_MART_ENSEMBL", dataset = "mmusculus_gene_ensembl"))
       gene_coords = GRanges(
-        seqnames = paste0("chr", gene_coords$chromosome_name), 
-        ranges = IRanges(gene_coords$start_position, gene_coords$end_position), 
+        seqnames = paste0("chr", gene_coords$chromosome_name),
+        ranges = IRanges(gene_coords$start_position, gene_coords$end_position),
         genome = "mm10"
       )
       skin_atac_peaks = GRanges(
-        seqnames = skin_atac_peaks$V1, 
-        ranges = IRanges(skin_atac_peaks$V2, skin_atac_peaks$V3), 
+        seqnames = skin_atac_peaks$V1,
+        ranges = IRanges(skin_atac_peaks$V2, skin_atac_peaks$V3),
         genome = "mm10"
       )
       overlaps = GenomicRanges::findOverlaps(
-        gene_coords, 
-        skin_atac_peaks, 
+        gene_coords,
+        skin_atac_peaks,
         maxgap = 1e5
       )
       overlaps %<>% as.data.frame() %>% set_colnames(c("gene", "enhancer"))
       overlaps[["distance"]] = GenomicRanges::distance(
         gene_coords[overlaps[["gene"]]],
-        skin_atac_peaks[overlaps[["enhancer"]]] 
+        skin_atac_peaks[overlaps[["enhancer"]]]
       )
       overlaps$correlation = NA
       for(i in seq_along(overlaps[[1]])){
@@ -256,20 +217,20 @@ do_one = function(condition_idx){
         )
       }
       overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
-      ggplot2::ggplot(overlaps) + 
-        geom_hex(aes(distance, correlation)) + 
+      ggplot2::ggplot(overlaps) +
+        geom_hex(aes(distance, correlation)) +
         facet_wrap(~is_kept)
       ggtitle("Enhancer-gene pairing in skin SHARE-seq data")
       ggsave("enhancer_pairing.pdf", width = 5, height = 5)
       enhancer_gene_links = subset(overlaps, is_kept)
       enhancer_gene_links$Gene2 = colnames(normalized_data$pseudo_bulk_rna)[enhancer_gene_links$gene]
       motif_enhancer_links = summary(motif_info$motif_ix@assays@data@listData$motifMatches) %>% set_colnames(c("enhancer", "motif_index", "is_connected"))
-      gene_motif_links = motif_info$all_motifs %>% 
-        sapply(TFBSTools::name) %>% 
+      gene_motif_links = motif_info$all_motifs %>%
+        sapply(TFBSTools::name) %>%
         data.frame(genes=.) %>%
         (dplyr::add_rownames) %>%
         dplyr::rename(motif_index = rowname) %>%
-        dplyr::mutate(genes = gsub("\\(var\\..*\\)", "", genes)) %>% 
+        dplyr::mutate(genes = gsub("\\(var\\..*\\)", "", genes)) %>%
         tidyr::separate_rows("genes", sep = "::") %>%
         dplyr::mutate(Gene1 = stringr::str_to_sentence(genes))
       motif_gene_links = merge(motif_enhancer_links, enhancer_gene_links, by = "enhancer")
@@ -281,33 +242,16 @@ do_one = function(condition_idx){
       withr::with_dir(
         DATALAKE,
         {
-          chip_meta = read.table("chip-atlas/mouse/experimentList.tab.standard.fields.only.tab",
-                                 sep = "\t", header = F)
-          colnames(chip_meta) =  c("Experimental ID",
-                                   "Genome assembly"	,
-                                   "Antigen class",
-                                   "Antigen",
-                                   "Cell type class",
-                                   "Cell type",
-                                   "Cell type description",
-                                   "Processing logs")
-          chip_meta = subset(chip_meta, `Genome assembly`=="mm10")
-          chip_meta %<>% subset(`Antigen class`=="TFs and others")
-          chip_meta %<>% subset(`Cell type class`=="Epidermis")
-          chip_files =
-            list.files("chip-atlas/mouse/targets", full = T)
-          names(chip_files) = gsub(".10.tsv$", "", basename(chip_files))
-          chip_files = chip_files[unique(chip_meta[["Antigen"]])]
+          average_signals = function(DF){
+            new_df = DF[1:2]
+            new_df$average_signal = DF[-(1:2)] %>% rowMeans()
+            return(new_df)
+          }
+          chip_files = list.files("chip-atlas/filtered_by_celltype/skin/hg19", full = T)[1:3]
           mouse_chip =
-            lapply(chip_files, read.csv, sep = "\t", header = T) %>%
-            lapply(extract2, 1) %>%
-            mapply(
-              function(X, tf) {
-                data.frame("Gene1" = gsub(".10.tsv$", "", basename(tf)), "Gene2" = X)
-              },
-              X = .,
-              tf = chip_files,
-              SIMPLIFY = F) %>%
+            lapply(chip_files, read.csv, sep = " ", header = T) %>%
+            lapply(average_signals) %>%
+            lapply(subset, average_signal>mean(average_signal)) %>% # filter for strong signals
             data.table::rbindlist() %>%
             dplyr::mutate(is_verified = T)
         }
@@ -324,12 +268,14 @@ do_one = function(condition_idx){
       DF[["is_testable"]] = DF[["Gene1"]] %in% mouse_chip[["Gene1"]]
       # This fixes unknown edges (those lacking ChIP data).
       DF[["is_verified"]][ !( DF[["is_testable"]] ) ] = NA
-      
+
       # Check FDR on 1) testable hypotheses, with 2) motif support
       DF = subset(DF, is_testable)
-      DF = merge(DF, gene_gene_links_from_motif_analysis, type = "inner")
+      if( require_motif_support ){
+        DF = merge(DF, gene_gene_links_from_motif_analysis, type = "inner")
+      }
       DF$q = DF$knockoff_stat %>% rlookc::knockoffQvals(offset = 0)
-      
+
       # Compute calibration!
       calibration = list()
       for(fdr in c(1:100)/100){
