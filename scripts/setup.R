@@ -8,6 +8,7 @@ suppressPackageStartupMessages({
   library("DelayedArray")
   library("HDF5Array")
   library("scater")
+  library("Seurat")
   library("scran")
   library("optparse")
 })
@@ -38,13 +39,17 @@ create_pseudobulk_path = function(keratinocyte_only){
 # Set up the final results
 create_experiment_path = function(conditions, condition_idx){
   attach(conditions[condition_idx,], warn.conflicts = F)
-  file.path(
-    paste0("keratinocyte_only=", keratinocyte_only),
-    paste0("cell_count_cutoff=", cell_count_cutoff),
-    paste0("condition_on=", condition_on),
-    paste0("knockoff_type=", knockoff_type),
-    paste0("error_mode=", error_mode)
-  )
+  fp="."
+  for(col in colnames(conditions)){
+    fp = file.path(
+      fp, 
+      paste0(
+        col, 
+        "=",
+        conditions[condition_idx,col])
+    ) 
+  }
+  return(fp)
 }
 
 # Load skin data
@@ -127,37 +132,115 @@ TAC-2,keratinocyte"
 
 
 # Load chip-atlas target gene lists
-{
-  cat("\nLoading ChIP data...\n")
-  average_signals = function(DF){
-    new_df = DF[1:2]
-    new_df$average_signal = DF[-(1:2)] %>% rowMeans()
-    return(new_df)
-  }
+load_chip_data = function(){
   withr::with_dir(
     DATALAKE,
     {
-      chip_files = list.files(
-        paste0("chip-atlas/filtered_by_celltype/skin/", 
-               c("hg19",
-                 "hg38",
-                 "mm10",
-                 "mm9")
-        ), 
-        full = T)
+      average_signals = function(DF){
+        cat(".")
+        new_df = DF[1:2]
+        new_df$average_signal = DF[-(1:2)] %>% rowMeans()
+        return(new_df)
+      }
+      chip_files = lapply(
+        c("hg19", "hg38", "mm10", "mm9"),
+        function(genome) list.files(paste0("chip-atlas/filtered_by_celltype/skin/", genome), full = T)
+      )
+      chip_files %<>% Reduce(c, .)
       mouse_chip =
-        lapply(chip_files, read.table, header = T) %>%
+        lapply(chip_files, function(...) {cat("."); read.csv(...)}, sep = " ", header = T) %>%
         lapply(average_signals) %>%
-        lapply(subset, average_signal>mean(average_signal)) %>% 
+        lapply(subset, average_signal>mean(average_signal)) %>% # filter for strong signals
         data.table::rbindlist() %>%
         dplyr::mutate(is_verified = T)
     }
   )
-  frequency_in_chip_data =
-    mouse_chip[["regulator"]] %>%
-    table %>%
-    as.data.frame() %>%
-    set_colnames(c("Gene1", "chip_freq"))
+  mouse_chip$Gene1 = mouse_chip$regulator
+  mouse_chip$Gene2 = mouse_chip$Target_genes
+  mouse_chip$Gene1 %<>% toupper
+  mouse_chip$Gene2 %<>% toupper
+  mouse_chip$regulator = NULL
+  mouse_chip$Target_genes = NULL
+  return (mouse_chip)
+}
+
+#' Obtain a subset of TF-target hypotheses supported by a motif in a region whose chromatin accessibility
+#' correlates with the target gene expression.
+#' 
+get_motif_supported_hypotheses = function(normalized_data){
+  cat("Getting gene coordinates from ensembl. Each dot is one attempt (the download sometimes fails).")
+  gene_coords = NULL
+  for(i in 1:100){
+    if(!is.null(gene_coords)){break}
+    Sys.sleep(1)
+    cat(".")
+    gene_coords = tryCatch(
+      {
+        biomaRt::getBM(attributes = c("mgi_symbol", "chromosome_name", "start_position", "end_position"),
+                       filters = "mgi_symbol",
+                       values = normalized_data$gene_metadata$Gene1,
+                       mart = biomaRt::useMart("ENSEMBL_MART_ENSEMBL", dataset = "mmusculus_gene_ensembl"))
+      }, 
+      error = function(e) NULL
+    )
+  }
+  gene_coords = GRanges(
+    seqnames = paste0("chr", gene_coords$chromosome_name),
+    ranges = IRanges(gene_coords$start_position, gene_coords$end_position),
+    genome = "mm10"
+  )
+  skin_atac_peaks_gr = GRanges(
+    seqnames = skin_atac_peaks$V1,
+    ranges = IRanges(skin_atac_peaks$V2, skin_atac_peaks$V3),
+    genome = "mm10"
+  )
+  overlaps = GenomicRanges::findOverlaps(
+    gene_coords,
+    skin_atac_peaks_gr,
+    maxgap = 1e5
+  )
+  overlaps %<>% as.data.frame() %>% set_colnames(c("gene", "enhancer"))
+  overlaps[["distance"]] = GenomicRanges::distance(
+    gene_coords[overlaps[["gene"]]],
+    skin_atac_peaks_gr[overlaps[["enhancer"]]]
+  )
+  overlaps$correlation = NA
+  cat("Correlating genes with nearby ATAC peaks.\n")
+  for(i in seq_along(overlaps[[1]])){
+    if((i%%10000)==0){cat(i, " of ", length(overlaps[[1]]), "\n")}
+    peak_idx = overlaps[i, "enhancer"]
+    gene_idx = overlaps[i, "gene"]
+    overlaps[i, "correlation"] = cor(
+      normalized_data$pseudo_bulk_atac[,peak_idx],
+      normalized_data$pseudo_bulk_rna[,gene_idx],
+    )
+  }
+  overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
+  ggplot2::ggplot(overlaps) +
+    geom_hex(aes(distance, correlation)) +
+    facet_wrap(~is_kept)
+  ggtitle("Enhancer-gene pairing in skin SHARE-seq data")
+  ggsave("enhancer_pairing.pdf", width = 5, height = 5)
+  enhancer_gene_links = subset(overlaps, is_kept)
+  enhancer_gene_links$Gene2 = colnames(normalized_data$pseudo_bulk_rna)[enhancer_gene_links$gene]
+  motif_enhancer_links = summary(motif_info$motif_ix@assays@data@listData$motifMatches) %>% set_colnames(c("enhancer", "motif_index", "is_connected"))
+  gene_motif_links = link_genes_to_motifs(motif_info)
+  motif_gene_links = merge(motif_enhancer_links, enhancer_gene_links, by = "enhancer")
+  gene_gene_links_from_motif_analysis = merge(gene_motif_links, motif_gene_links, by = "motif_index")
+  gene_gene_links_from_motif_analysis = gene_gene_links_from_motif_analysis[c("Gene1", "Gene2")]
+  return(gene_gene_links_from_motif_analysis)
+}
+
+link_genes_to_motifs = function(motif_info){
+  motif_info$all_motifs %>%
+    sapply(TFBSTools::name) %>%
+    data.frame(genes=., motif = names(.)) %>%
+    (dplyr::add_rownames) %>%
+    dplyr::rename(motif_index = rowname) %>%
+    dplyr::mutate(genes = gsub("\\(var\\..*\\)", "", genes)) %>%
+    tidyr::separate_rows("genes", sep = "::") %>%
+    dplyr::mutate(Gene1 = toupper(genes)) %>%
+    extract(c("motif_index", "motif", "Gene1"))
 }
 
 # Load the full data in a nice format
@@ -245,10 +328,7 @@ set_up_share_skin_pseudobulk = function(conditions, i){
   pseudo_bulk_rna      %<>% extract( , metacells_keep)
   pseudo_bulk_rna_var  %<>% extract( , metacells_keep)
   pseudo_bulk_metadata %<>% extract( metacells_keep , )
-  withr::with_dir( DATALAKE, {
-    skin_atac_peaks = read.csv("share_seq/skin/GSM4156597_skin.late.anagen.peaks.bed.gz",
-                               sep = "\t", header = F)
-  })
+
   dim(mouse_tf_atfdb)
 
   # Downsample or resample to study effect of measurement error
@@ -285,7 +365,9 @@ set_up_share_skin_pseudobulk = function(conditions, i){
 
   # Knockoff filter code expects 1 variable per column, not per row
   pseudo_bulk_rna %<>% t
+  pseudo_bulk_rna_var %<>% t
   pseudo_bulk_rna_noisy %<>% t
+  pseudo_bulk_atac %<>% t
   return(list(
     mouse_non_tf_expression    = pseudo_bulk_rna[,!gene_metadata$is_tf],
     mouse_tf_expression        = pseudo_bulk_rna[, gene_metadata$is_tf],
@@ -296,6 +378,30 @@ set_up_share_skin_pseudobulk = function(conditions, i){
     pseudo_bulk_rna_noisy      = pseudo_bulk_rna_noisy,
     pseudo_bulk_rna_var        = pseudo_bulk_rna_var,
     pseudo_bulk_atac           = pseudo_bulk_atac,
-    motif_activity = t(motifmatchr::motifMatches(motif_info$motif_ix)) %*% pseudo_bulk_atac
+    motif_activity             = ( pseudo_bulk_atac %*% motifmatchr::motifMatches(motif_info$motif_ix) ) 
   ) )
+}
+
+# This is a fast way to compute variable importance statistics.
+dfmax = 21
+fast_lasso_penalty = function(X, X_k, y) {
+  cat(".")
+  suppressWarnings(
+    knockoff::stat.lasso_lambdasmax(
+      y   = y,
+      X   = X,
+      X_k = X_k,
+      dfmax = dfmax
+    )
+  )
+}
+
+#' Z-score the data, adding noise to constants to avoid outputting anything with zero sd
+#'
+safe_scale = function(x, ...){
+  if(sd(x)==0){
+    return( x + rnorm(length(x)) )
+  } else {
+    return( (x - mean(x)) / sd(x) )
+  }
 }
