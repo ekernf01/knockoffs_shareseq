@@ -27,11 +27,15 @@ if(!dir.exists(DATALAKE)){
 }
 
 # Set up some key intermediate steps
-create_pseudobulk_path = function(keratinocyte_only){
-  if(  keratinocyte_only ){
+create_pseudobulk_path = function(cell_type){
+  if(  cell_type == "keratinocyte" ){
     pseudobulk_path = "input_pseudobulk_keratinocyte"
-  } else {
+  } else if(  cell_type == "skin" ){
     pseudobulk_path = "input_pseudobulk"
+  } else if(  cell_type == "pbmc" ){
+    pseudobulk_path = "input_pseudobulk_pbmc"
+  } else {
+    stop(c("cell_type must be pbmc, skin, or keratinocyte. Provided value: ", cell_type))
   }
   dir.create(pseudobulk_path, showWarnings = F)
   pseudobulk_path
@@ -50,6 +54,20 @@ create_experiment_path = function(conditions, condition_idx){
     ) 
   }
   return(fp)
+}
+
+# Load pbmc data
+{
+  withr::with_dir( file.path(DATALAKE, "multiome_10x", "pbmc"), {
+    pbmc_all = HDF5Array::TENxMatrix("10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5")
+    pbmc_rna  = pbmc_all[???]
+    pbmc_atac = pbmc_all[???]
+    share_seq_pbmc_metadata = ??
+    colnames(pbmc_rna)  = ??
+    rownames(pbmc_rna)  = ??
+    pbmc_atac_peaks = read.csv("10k_PBMC_Multiome_nextgem_Chromium_Controller_atac_peaks.bed", sep = "\t", header = F)
+    pbmc_atac_bc    = read.csv("??", header = F)[[1]]
+  })
 }
 
 # Load skin data
@@ -127,6 +145,11 @@ TAC-2,keratinocyte"
     seqnames = skin_atac_peaks$V1, 
     ranges = IRanges(skin_atac_peaks$V2, skin_atac_peaks$V3)), 
     genome = "mm10"
+  )
+  motif_info$motif_ix_pbmc <- motifmatchr::matchMotifs(motif_info$all_motifs, GRanges(
+    seqnames = pbmc_atac_peaks$V1, 
+    ranges = IRanges(pbmc_atac_peaks$V2, pbmc_atac_peaks$V3)), 
+    genome = "hg38"
   )
 }
 
@@ -243,55 +266,62 @@ link_genes_to_motifs = function(motif_info){
     extract(c("motif_index", "motif", "Gene1"))
 }
 
-# Load the full data in a nice format
-set_up_sce = function(keratinocyte_only = T){
-  skin_rna_sce = SingleCellExperiment(assays = list(counts = t(skin_rna)))
-  colData(skin_rna_sce)[["rna.bc"]] = rownames(skin_rna)
-  colData(skin_rna_sce) = merge(colData(skin_rna_sce),
-                                share_seq_skin_metadata,
-                                by = "rna.bc",
-                                all.x = T,
-                                all.y = F)
-  # Exclude cells with no ATAC counterpart or cell type label.
-  skin_rna_sce = skin_rna_sce[,!is.na(skin_rna_sce[["celltype"]])]
-
+#' Load the full data in a nice format
+#' 
+#' list with one SingleCellExperiment each for RNA and ATAC.
+#' RNA are normalized by total counts.
+#' the RNA cell barcodes should be equal to, or a subset of, the ATAC ones. 
+#' 
+set_up_sce = function(cell_type = "skin"){
+  if(cell_type=="pbmc"){
+    rna_sce  = SingleCellExperiment(assays = list(counts = t(pbmc_rna)))??
+    atac_sce = SingleCellExperiment(assays = list(counts = t(pbmc_atac)))??
+      colData(rna_sce) = ???
+        colData(atac_sce) = ???
+  } else if(cell_type %in% c("skin", "keratinocyte")){
+    rna_sce = SingleCellExperiment(assays = list(counts = t(skin_rna)))
+    colData(rna_sce)[["rna.bc"]] = rownames(skin_rna)
+    colData(rna_sce) = merge(colData(rna_sce),
+                                  share_seq_skin_metadata,
+                                  by = "rna.bc",
+                                  all.x = T,
+                                  all.y = F)
+    # Exclude cells with no ATAC counterpart or cell type label.
+    rna_sce = rna_sce[,!is.na(rna_sce[["celltype"]])]
+    
+    # Set up paired ATAC data
+    atac_sce = SingleCellExperiment(assays = list(counts = skin_atac))
+    atac_sce
+    colData(atac_sce)[["atac.bc"]] = rownames(colData(atac_sce))
+    colData(atac_sce) = merge(colData(atac_sce),
+                              colData(rna_sce),
+                              by = "atac.bc",
+                              all.x = T,
+                              all.y = F)
+  } else {
+    stop(c("cell_type must be pbmc, skin, or keratinocyte. Provided value: ", cell_type))
+  }
   # Exclude cells we don't have ChIP data for
-  if(keratinocyte_only){
+  if(cell_type == "keratinocyte"){
     keep = c("keratinocyte",
       "hair_shaft",
       "bulge")
-    skin_rna_sce = skin_rna_sce[,skin_rna_sce[["supertype"]] %in% keep]
+    rna_sce = rna_sce[,rna_sce[["supertype"]] %in% keep]
   }
 
   # Normalize
-  sizeFactors(skin_rna_sce) <- colSums(assay(skin_rna_sce, "counts"))
-  skin_rna_sce <- scater::logNormCounts(skin_rna_sce)
+  sizeFactors(rna_sce) <- colSums(assay(rna_sce, "counts"))
+  rna_sce <- scater::logNormCounts(rna_sce)
 
-  # Retrieve metadata, tSNE, etc, if it exists
-  withr::with_dir(create_pseudobulk_path(keratinocyte_only), {
-    cell_metadata = NULL
-    try({cell_metadata = read.csv("rna_metadata.csv")}, silent = T)
-  })
-
-  # Set up paired ATAC data
-  skin_atac_sce = SingleCellExperiment(list("counts" = skin_atac))
-  skin_atac_sce
-  colData(skin_atac_sce)[["atac.bc"]] = rownames(colData(skin_atac_sce))
-  colData(skin_atac_sce) = merge(colData(skin_atac_sce),
-                                 colData(skin_rna_sce),
-                                 by = "atac.bc",
-                                 all.x = T,
-                                 all.y = F)
-  return(list( skin_rna_sce = skin_rna_sce,
-               skin_atac_sce = skin_atac_sce,
-               cell_metadata = cell_metadata ))
+  return(list( rna_sce = rna_sce,
+               atac_sce = atac_sce ))
 }
 
 # Reload cluster average expression.
 # Only works after cluster_cells.R has been run.
 set_up_share_skin_pseudobulk = function(conditions, i){
   # Which experiment are we doing?
-  keratinocyte_only = conditions$keratinocyte_only[[i]]
+  cell_type         = conditions$cell_type[[i]]
   knockoff_type     = conditions$knockoff_type[[i]]
   error_mode        = conditions$error_mode[[i]]
   cell_count_cutoff = conditions$cell_count_cutoff[[i]]
@@ -310,7 +340,7 @@ set_up_share_skin_pseudobulk = function(conditions, i){
   )
 
   # Load expression pseudo-bulk data
-  withr::with_dir(create_pseudobulk_path(keratinocyte_only), {
+  withr::with_dir(create_pseudobulk_path(cell_type), {
     pseudo_bulk_atac = NULL
     try({pseudo_bulk_atac = read.csv("atac_pseudo_bulk.csv",     row.names = 1) %>% as.matrix})
     pseudo_bulk_rna       = read.csv("rna_pseudo_bulk.csv",      row.names = 1) %>% as.matrix
