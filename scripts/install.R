@@ -3,9 +3,9 @@ dir.create(path = Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = T
 .libPaths(Sys.getenv("R_LIBS_USER"))
 
 # # Install packages as they were in late 2021
-# install.packages("https://cran.r-project.org/src/contrib/Archive/remotes/remotes_2.4.2.tar.gz", 
-#                  source = TRUE,
-#                  repos = NULL)
+install.packages("https://cran.r-project.org/src/contrib/Archive/remotes/remotes_2.4.2.tar.gz",
+                 source = TRUE,
+                 repos = NULL)
 # pv  = read.table(header = 1, text = 
 #   "package version
 # tidyverse 1.3.1
