@@ -60,7 +60,7 @@ atac_peaks = list()
 # Load pbmc data
 {
   withr::with_dir( file.path(DATALAKE, "multiome_10x", "pbmc"), {
-    pbmc_all = HDF5Array::TENxMatrix("10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5")
+    pbmc_all = HDF5Array::TENxMatrix("10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5", group = "matrix")
     pbmc_rna = pbmc_all[ grepl("ENSG", rownames(pbmc_all)), ]
     pbmc_atac = pbmc_all[!grepl("ENSG", rownames(pbmc_all)), ]
     

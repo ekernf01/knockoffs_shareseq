@@ -8,7 +8,7 @@ git clone https://github.com/ekernf01/rlookc.git
 # Install aws cli, build-essential (c compiler), git, curl, and R v4
 echo "Installing software..."
 sudo apt-get update -qq
-sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core cmake libudunits2-dev
+sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core cmake libudunits2-dev libgsl0-dev libgmp3-dev
 R_VERSION=4.1.2
 curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-${R_VERSION}_1_amd64.deb
 sudo gdebi -n r-${R_VERSION}_1_amd64.deb
@@ -40,8 +40,8 @@ mkdir v14 && cd v14
 
 # Install some R packages
 mkdir logs
-Rscript ../scripts/install.R 
-nohup Rscript ../scripts/install.R          &> logs/install.txt
+Rscript ../scripts/install.R          
+Rscript ../scripts/install.R          &> logs/install.txt # Yes, it is necessary to run this twice
 nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &
 wait
 nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt 
