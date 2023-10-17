@@ -11,42 +11,42 @@ sudo apt-get update -qq
 sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core cmake libudunits2-dev
 R_VERSION=4.1.2
 curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-${R_VERSION}_1_amd64.deb
-sudo gdebi r-${R_VERSION}_1_amd64.deb
+sudo gdebi -n r-${R_VERSION}_1_amd64.deb
 sudo ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R
 sudo ln -s /opt/R/${R_VERSION}/bin/Rscript /usr/local/bin/Rscript
 R --version # 4.1.2 desired
 
 # Retrieve the datasets used.
 echo "Fetching data..."
-wget https://zenodo.org/record/6573413/files/chip-atlas.zip
-wget https://zenodo.org/record/6573413/files/share_seq.zip
-wget https://zenodo.org/record/6573413/files/mouse_tfs.zip
-unzip chip-atlas.zip && mv chip-atlas\ \(copy\) chip-atlas
+wget https://zenodo.org/record/8350580/files/chip-atlas.zip
+wget https://zenodo.org/record/8350580/files/share_seq.zip
+wget https://zenodo.org/record/8350580/files/multiome_10x.zip
+wget https://zenodo.org/record/8350580/files/mouse_tfs.zip
+unzip chip-atlas.zip
 unzip share_seq.zip
+unzip multiome_10x.zip
 unzip mouse_tfs.zip
 mkdir ~/datalake
 mv chip-atlas ~/datalake
 mv share_seq ~/datalake
+mv multiome_10x ~/datalake
 mv mouse_tfs ~/datalake
 
 # Enter the demo repo.
 cd knockoffs_shareseq
 
 # Change this if you want to run a new set of conditions
-mkdir v12 && cd v12
+mkdir v14 && cd v14
 
 # Install some R packages
 mkdir logs
 Rscript ../scripts/install.R 
-Rscript ../scripts/install.R # this needs to be run twice for some reason
-nohup Rscript ../scripts/install.R                              &> logs/install.txt
-nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=F  &> logs/cluster.txt &
-nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=T  &> logs/cluster_k_only.txt &
+nohup Rscript ../scripts/install.R          &> logs/install.txt
+nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &
 wait
-nohup Rscript ../scripts/find_regulators.R                      &> logs/knockoffs.txt 
+nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt 
 wait 
 nohup Rscript ../scripts/make_additional_plots.R
-
 
 # # Optional step: export results (edit this to point to your S3)
 # aws s3 sync .. s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq

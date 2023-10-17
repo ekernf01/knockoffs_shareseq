@@ -1,16 +1,10 @@
 source("../scripts/setup.R")
-option_list = list(
-  make_option(c("--cell_type"), type="character", default="skin",
-              help="'skin', 'keratinocyte', or 'pbmc.'")
-);
-opt_parser = OptionParser(option_list=option_list);
-args = parse_args(opt_parser);
 
-run_clustering = function(cell_type){
+run_clustering = function(celltype){
   set.seed(0)
 
   cat("Setting up data.\n")
-  single_cell_experiments = set_up_sce(cell_type)
+  single_cell_experiments = set_up_sce(celltype)
 
   # Cluster etc
   gene_variance_model = scran::modelGeneVar(single_cell_experiments$rna_sce)
@@ -40,12 +34,13 @@ run_clustering = function(cell_type){
 
   # Examine results
   cat("Making metacells and saving various outputs. \n")
-  dir.create(create_pseudobulk_path(keratinocyte_only), recursive = T, showWarnings = F)
+  dir.create(create_pseudobulk_path(celltype), recursive = T, showWarnings = F)
 
-  withr::with_dir(create_pseudobulk_path(keratinocyte_only), {
+  withr::with_dir(create_pseudobulk_path(celltype), {
     dir.create("description", recursive = F, showWarnings = F)
     for( colour_by in rev( c( "cluster", "celltype", "sizeFactor" ) ) ){
-      scater::plotTSNE(single_cell_experiments$rna_sce, colour_by = colour_by) + ggplot2::coord_fixed()
+      try({scater::plotTSNE(single_cell_experiments$rna_sce) + ggplot2::coord_fixed()})
+      try({scater::plotTSNE(single_cell_experiments$rna_sce, colour_by = colour_by) + ggplot2::coord_fixed()})
       ggplot2::ggsave(paste0("description/", colour_by, ".png"), width = 10, height = 6)
     }
 
@@ -119,4 +114,6 @@ run_clustering = function(cell_type){
   })
 }
 
-run_clustering(cell_type = args$cell_type)
+run_clustering(celltype = "pbmc")
+run_clustering(celltype = "skin")
+run_clustering(celltype = "keratinocyte")

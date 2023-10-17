@@ -25,10 +25,10 @@ RUN R --version
 
 # Get our code
 RUN git clone https://github.com/ekernf01/rlookc.git
+RUN git clone https://github.com/ekernf01/GM.git
 RUN git clone https://github.com/ekernf01/knockoffs_shareseq.git
 
 # Install the R packages we need. This fails and then works due to a "versions" quirk.
 RUN Rscript knockoffs_shareseq/scripts/install.R || Rscript knockoffs_shareseq/scripts/install.R
 
-
-
+RUN apt-get install -yq wget

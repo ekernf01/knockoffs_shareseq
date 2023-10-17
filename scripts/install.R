@@ -39,14 +39,13 @@ BiocManager::install(
     "mbkmeans",
     "JASPAR2018", 
     "HDF5Array",
-    "GENIE3",
-    "doRNG",
     "motifmatchr", 
     'BiocGenerics', 
     'DelayedMatrixStats',
     'biomaRt',
     "GenomicRanges", 
-    )
+    "BSgenome.Hsapiens.UCSC.hg38",
+    "BSgenome.Mmusculus.UCSC.mm10"
+  )
 )
 install.packages("~/rlookc", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))
-install.packages("https://cran.r-project.org/src/contrib/Archive/BINCO/BINCO_0.1-1.tar.gz", from = "source", repo = NULL)

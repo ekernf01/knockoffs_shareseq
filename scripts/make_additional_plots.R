@@ -37,9 +37,12 @@ for(condition_idx in seq(nrow(conditions))){
   # Run KNN exchangeability diagnostic
   # Set n_neighbors low because there's not many observations
   withr::with_dir(new_wd, {
-    knn_test[[condition_idx]] = rlookc::KNNTest(X = readRDS("output_knockoffs/original_features.Rda"),
+    knn_test[[paste0(condition_idx, "_")]] = NULL
+    try( silent = T, {
+      knn_test[[paste0(condition_idx, "_")]] = rlookc::KNNTest(X = readRDS("output_knockoffs/original_features.Rda"),
                                                 X_k = readRDS("output_knockoffs/knockoffs.Rda"),
                                                 n_neighbors = 5)
+    })
   })
   # Grab outputs and make them uniform
   withr::with_dir(new_wd, {
@@ -47,10 +50,6 @@ for(condition_idx in seq(nrow(conditions))){
       read.csv("calibration/chip_calibration.csv", row.names = 1) %>%
         cbind(evaluation="chip") %>% 
         sanitize_names,
-      read.csv("calibration/average_case_calibration.csv", row.names = 1) %>%
-        summarize_simulation %>%
-        sanitize_names %>%
-        cbind(evaluation=paste0("simulated y with error_mode=", error_mode)),
       read_simulation_if_exists(error_mode=error_mode)
     )  %>% 
       (function(X) (X[!sapply(X, is.null)])) %>%
@@ -60,18 +59,18 @@ for(condition_idx in seq(nrow(conditions))){
   })
 }
 all_calibration %<>% Reduce(f = rbind)
-
+all_calibration$celltype %<>% factor(levels = c("skin", "keratinocyte", "pbmc"))
+all_calibration$tf_activity_type %<>% factor(levels = c("rna", "motif", "both"))
 # Plot naive versus "shrinkage" (corpcor gaussian) knockoffs
 all_calibration %>%
   subset(
     T & 
       knockoff_type %in% c("gaussian", "permuted") &
+      celltype %in% c("skin", "pbmc") &
       tf_activity_type == "rna"  &
       condition_on == "none"     & 
-      cell_count_cutoff == 10    & 
       error_mode == "none"       &            
       seed==1                    &
-      keratinocyte_only == F     & 
       require_motif_support == F & 
       only_motif_support == F    &
       evaluation == "simulated y with error_mode=none"
@@ -79,13 +78,15 @@ all_calibration %>%
   ggplot() +
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_point(aes(x = expected_fdr, y = observed_fdr, color = knockoff_type, shape = knockoff_type)) +
-  facet_grid( ~ cell_count_cutoff) +
-  ggtitle("Conditional independence testing on SHARE-seq data", "Real TF expression and simulated targets") + 
+  facet_grid(celltype ~ cell_count_cutoff) +
+  ggtitle("Conditional independence testing on multi-omics data", "Real TF expression and simulated targets") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
-  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
-ggsave("shareseq_naive_vs_gaussian.pdf", width = 5, height = 2)
-ggsave("shareseq_naive_vs_gaussian.svg", width = 5, height = 2)
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
+  xlab("Expected FDR") + 
+  ylab("Observed FDR")
+ggsave("shareseq_naive_vs_gaussian.pdf", width = 5, height = 4)
+ggsave("shareseq_naive_vs_gaussian.svg", width = 5, height = 4)
 
 # Plot initial ChIP results
 all_calibration %>%
@@ -97,7 +98,6 @@ all_calibration %>%
       # cell_count_cutoff == 10    & 
       error_mode == "none"       &            
       seed==1                    &
-      keratinocyte_only == F     & 
       require_motif_support == F & 
       only_motif_support == F    &
       grepl("chip", evaluation)  
@@ -107,13 +107,18 @@ all_calibration %>%
   geom_point(aes(
     x = expected_fdr, 
     y = observed_fdr,
-    color = cell_count_cutoff )) +
-  ggtitle("TRN inference on SHARE-seq data", "Real data") + 
+    color = as.character(cell_count_cutoff) )) +
+  ggtitle("TRN inference on multi-omics data", "Real data") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
-  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
-ggsave("shareseq_cellcount_cutoff.pdf", width = 5, height = 2)
-ggsave("shareseq_cellcount_cutoff.svg", width = 5, height = 2)
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
+  facet_grid(~celltype) + 
+  labs(color = "Cell count cutoff") + 
+  xlab("Expected FDR") + 
+  ylab("Observed FDR") + 
+  theme(legend.position = "bottom")
+ggsave("shareseq_cellcount_cutoff.pdf", width = 4, height = 2.5)
+ggsave("shareseq_cellcount_cutoff.svg", width = 4, height = 2.5)
 
 # Plot results with/without error in X
 all_calibration %>%
@@ -122,10 +127,10 @@ all_calibration %>%
       knockoff_type %in% c("gaussian") &
       tf_activity_type == "rna"  &
       condition_on == "none"     & 
+      error_mode == "resample" &
       # cell_count_cutoff == 500    &
       # error_mode == "none"       &            
       seed==1                    &
-      keratinocyte_only == F     & 
       require_motif_support == F & 
       only_motif_support == F    &
       grepl("chip", evaluation)  == F
@@ -135,14 +140,19 @@ all_calibration %>%
   geom_point(aes(
     x = expected_fdr, 
     y = observed_fdr,
-    color = error_mode )) +
-  facet_wrap(~cell_count_cutoff) +
-  ggtitle("Conditional independence testing on SHARE-seq data", "Real TF expression with additional error and simulated targets") + 
+    color = as.character(cell_count_cutoff) )) +
+  facet_wrap(~celltype) +
+  ggtitle("Conditional independence testing on multi-omics data", "Real TF expression with additional error and simulated targets") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
-  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
-ggsave("shareseq_measurement_error.pdf", width = 6, height = 3.5)
-ggsave("shareseq_measurement_error.svg", width = 6, height = 3.5)
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
+  labs(color = "Error mode") + 
+  xlab("Expected FDR") + 
+  ylab("Observed FDR") + 
+  labs(color = "Cell count cutoff") + 
+  theme(legend.position = "bottom")
+ggsave("shareseq_measurement_error.pdf", width = 4, height = 2.5)
+ggsave("shareseq_measurement_error.svg", width = 4, height = 2.5)
 
 # Show results with different TF activities
 all_calibration %>%
@@ -150,24 +160,28 @@ all_calibration %>%
     T & 
       knockoff_type %in% c("gaussian") &
       condition_on == "none"     & 
-      # cell_count_cutoff == 500    &
+      cell_count_cutoff == 10    &
+      # celltype %in% c("pbmc") &
       error_mode == "none"       &
       seed==1                    &
-      keratinocyte_only == F     & 
       require_motif_support == F & 
       only_motif_support == F    &
       grepl("chip", evaluation)  == T
   ) %>% 
   ggplot() +
   geom_abline(aes(slope = 1, intercept = 0)) +
-  geom_point(aes(x = expected_fdr, y = observed_fdr, color = cell_count_cutoff)) +
-  facet_grid( ifelse(keratinocyte_only, "keratinocyte", "all") ~ tf_activity_type ) +
-  ggtitle("Calibration by cell type", "Real data") + 
+  geom_point(aes(x = expected_fdr, y = observed_fdr, color = tf_activity_type)) +
+  facet_grid( ~ celltype ) +
+  ggtitle("Calibration by type of TF activity", "Real data") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = ((0:2)/2) %>% setNames(c("0", "0.5", "1")), limits = 0:1) +  
-  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) 
-ggsave("shareseq_condition_confounders.pdf", width = 6, height = 3.5)
-ggsave("shareseq_condition_confounders.svg", width = 6, height = 3.5)
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)  + 
+  xlab("Expected FDR") + 
+  ylab("Observed FDR") + 
+  theme(legend.position = "bottom") + 
+  scale_color_manual(values = c("red", "blue", "purple"))
+ggsave("shareseq_motif_scores.svg", width = 4.5, height = 2.5)
+ggsave("shareseq_motif_scores.pdf", width = 4.5, height = 2.5)
 
 # Show results with/without conditioning on confounders
 all_calibration %>%
@@ -177,7 +191,7 @@ all_calibration %>%
       tf_activity_type == "both"  &
       error_mode == "none"       &
       seed==1                    &
-      keratinocyte_only == F     &
+      cell_count_cutoff == 10   & 
       require_motif_support == F &
       only_motif_support == F    &
       grepl("chip", evaluation)  == T
@@ -188,32 +202,55 @@ all_calibration %>%
     x = expected_fdr, 
     y = observed_fdr,
     color = condition_on )) +
-  facet_wrap(~cell_count_cutoff) +
-  ggtitle("TRN inference on SHARE-seq data", "Real data") + 
+  facet_wrap(~celltype) +
+  ggtitle("TRN inference on multi-omics data", "Real data") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
-  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
-ggsave("shareseq_condition_confounders.pdf", width = 6, height = 3.5)
-ggsave("shareseq_condition_confounders.svg", width = 6, height = 3.5)
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
+  xlab("Expected FDR") + 
+  ylab("Observed FDR") + 
+  theme(legend.position = "bottom") + 
+  scale_color_manual(values = c("green", "black"))
+ggsave("shareseq_condition_confounders.pdf", width = 4.5, height = 2.5)
+ggsave("shareseq_condition_confounders.svg", width = 4.5, height = 2.5)
 
 # Show results with motif support
 all_calibration %>%
   subset(
     T & 
-      ( require_motif_support | only_motif_support ) &
-      grepl("chip", evaluation)  == T
+      condition_on == "pca" &
+      cell_count_cutoff == 10 &
+      tf_activity_type=="both" &
+      grepl("chip", evaluation)  == T 
   ) %>% 
+  dplyr::mutate(
+    hypothesis_screening = 
+      ifelse(
+        only_motif_support, 
+        "motif only", 
+        ifelse(
+          require_motif_support,
+          "motif and knockoff-based",
+          "knockoff-based"
+        )
+      ) 
+    ) %>%
   ggplot() +
   geom_abline(aes(slope = 1, intercept = 0)) +
   geom_point(aes(
     x = expected_fdr, 
     y = observed_fdr,
-    color = only_motif_support )) +
-  facet_grid(keratinocyte_only~cell_count_cutoff) +
-  ggtitle("TRN inference on SHARE-seq data", "Real data") + 
+    color = hypothesis_screening )) +
+  labs(color = "Analysis method") +
+  facet_grid(~celltype) +
+  ggtitle("TRN inference on multi-omics data", "Real data") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
-  scale_y_continuous(breaks = (0:2)/2, limits = 0:1)
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
+  xlab("Expected FDR") + 
+  ylab("Observed FDR") + 
+  theme(legend.position = "bottom") + 
+  scale_color_manual(values = c("red", "orange", "yellow"))
 ggsave("shareseq_motif_support.pdf", width = 6, height = 3.5)
 ggsave("shareseq_motif_support.svg", width = 6, height = 3.5)
 
@@ -224,18 +261,22 @@ knn_test %>%
   t %>%
   as.matrix %>%
   as.data.frame() %>%
-  cbind(conditions) %>%
-  subset(condition_on == "none" & error_mode == "none") %>%
+  tibble::rownames_to_column("condition") %>%
+  merge(
+    conditions %>% tibble::rownames_to_column("condition") %>%dplyr::mutate(condition = paste0(condition, "_")) ,
+    by = "condition"
+  ) %>%
+  subset(condition_on == "none" & error_mode == "none" & tf_activity_type == "rna" & celltype %in% c("skin", "pbmc")) %>%
   reshape2::melt(measure = c("prop_not_swapped", "p_value")) %>% 
   subset(variable %in% c("prop_not_swapped", "p_value")) %>%
   ggplot() +
   geom_point(aes(x = as.character(cell_count_cutoff), color = knockoff_type, y = value), stat = "identity", position = "dodge") +
-  facet_wrap(~variable) +
+  facet_grid(variable ~ celltype) +
   xlab("Cell count cutoff") + 
   geom_hline(aes(yintercept = value), data = data.frame(value = 0.5, variable = "prop_not_swapped")) + 
   ggtitle("KNN exchangeability diagnostic", "Real data")
-ggsave(file = "KNN_exchangeability_test.pdf", width = 4, height = 2.5)
-ggsave(file = "KNN_exchangeability_test.svg", width = 4, height = 2.5)
+ggsave(file = "KNN_exchangeability_test.pdf", width = 4, height = 4)
+ggsave(file = "KNN_exchangeability_test.svg", width = 4, height = 4)
 
 # Cell type composition
 to_plot = set_up_share_skin_pseudobulk(conditions, 1)$pseudo_bulk_metadata %>%

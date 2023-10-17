@@ -1,31 +1,32 @@
 # Install our package from local source code
-install.packages("rlookc", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))
+Rscript -e 'install.packages("rlookc", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))'
 
 # Retrieve the datasets used.
 echo "Fetching data..."
-curl https://zenodo.org/record/6573413/files/chip-atlas.zip -o chip-atlas.zip
-curl https://zenodo.org/record/6573413/files/share_seq.zip -o share_seq.zip
-curl https://zenodo.org/record/6573413/files/mouse_tfs.zip -o mouse_tfs.zip
-unzip share_seq.zip
-unzip mouse_tfs.zip
+curl https://zenodo.org/record/8350580/files/chip-atlas.zip
+wget https://zenodo.org/record/8350580/files/share_seq.zip
+wget https://zenodo.org/record/8350580/files/multiome_10x.zip
+wget https://zenodo.org/record/8350580/files/mouse_tfs.zip
 unzip chip-atlas.zip
-mv chip-atlas\ \(copy\) chip-atlas
+unzip share_seq.zip
+unzip multiome_10x.zip
+unzip mouse_tfs.zip
 mkdir ~/datalake
 mv chip-atlas ~/datalake
 mv share_seq ~/datalake
+mv multiome_10x ~/datalake
 mv mouse_tfs ~/datalake
 
 # Enter the demo repo.
 cd knockoffs_shareseq
 
 # Change this if you want to run a new set of conditions
-mkdir v12 
-cd v12
+mkdir v14
+cd v14
 
 mkdir logs
-nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=F  &> logs/cluster.txt &
-nohup Rscript ../scripts/cluster_cells.R --keratinocyte_only=T  &> logs/cluster_k_only.txt &
+nohup Rscript ../scripts/cluster_cells.R            &> logs/cluster.txt &
 wait
-nohup Rscript ../scripts/find_regulators.R                      &> logs/knockoffs.txt 
+nohup Rscript ../scripts/find_regulators.R          &> logs/knockoffs.txt 
 wait 
 nohup Rscript ../scripts/make_additional_plots.R
