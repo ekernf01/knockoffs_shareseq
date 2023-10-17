@@ -27,7 +27,8 @@ for(i in rownames(pv)){
     version = pv[i, "version"], 
     lib = Sys.getenv("R_LIBS_USER"), 
     upgrade = "never", 
-    quiet = TRUE,
+    quiet = TRUE, 
+    repos = "https://cloud.r-project.org"
   )
 }
 BiocManager::install(
