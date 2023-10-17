@@ -63,8 +63,11 @@ atac_peaks = list()
     pbmc_all = HDF5Array::TENxMatrix("10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5", group = "matrix")
     x = rhdf5::h5read("~/datalake/multiome_10x/pbmc/10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5", name = "/matrix/features/id")
     rownames(pbmc_all) = as.character(x)
+    
     pbmc_rna = pbmc_all[ grepl("ENSG", rownames(pbmc_all)), ]
     pbmc_atac = pbmc_all[!grepl("ENSG", rownames(pbmc_all)), ]
+    rownames(pbmc_rna) = as.character(rownames(pbmc_rna))
+    rownames(pbmc_atac) = as.character(rownames(pbmc_atac))
     
     # Gene name conversion
     ens_vs_hgnc = biomaRt::getBM(attributes = c("hgnc_symbol", "ensembl_gene_id",  "chromosome_name", "start_position", "end_position"),

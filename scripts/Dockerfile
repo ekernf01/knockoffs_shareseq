@@ -26,7 +26,7 @@ RUN R_VERSION=4.1.2 && ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R && ln -s
 RUN R --version
 
 # Get our code
-RUN git clone https://github.com/ekernf01/knockoffs_shareseq.git
+RUN echo "" && git clone https://github.com/ekernf01/knockoffs_shareseq.git
 
 # Install the R packages we need. This fails and then works due to a "versions" quirk.
 RUN Rscript knockoffs_shareseq/scripts/install.R || Rscript knockoffs_shareseq/scripts/install.R 
