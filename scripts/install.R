@@ -21,7 +21,7 @@ knockoff 0.3.3
 vita 1.0.0
 optparse 1.7.1"
 )
-pv = data.frame(package = "optparse", version = "1.7.1")
+# pv = data.frame(package = "optparse", version = "1.7.1")
 for(i in rownames(pv)){
   remotes::install_version(
     pv[i, "package"],
