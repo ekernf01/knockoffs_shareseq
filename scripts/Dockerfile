@@ -29,7 +29,7 @@ RUN R --version
 RUN git clone https://github.com/ekernf01/knockoffs_shareseq.git
 
 # Install the R packages we need. This fails and then works due to a "versions" quirk.
-RUN R knockoffs_shareseq/scripts/install.R || R knockoffs_shareseq/scripts/install.R 
+RUN R --no-save knockoffs_shareseq/scripts/install.R || R --no-save  knockoffs_shareseq/scripts/install.R 
 
 
 # # Reminder to myself of the boilerplate to rebuild this
