@@ -85,6 +85,11 @@ atac_peaks = list()
     peaks_keep = grepl("^chr", atac_peaks$pbmc$V1)
     pbmc_atac = pbmc_atac[peaks_keep,]
     atac_peaks$pbmc = atac_peaks$pbmc[peaks_keep,]
+    
+    # These cause problems otherwise
+    rownames(pbmc_rna) = as.character(rownames(pbmc_rna))
+    rownames(pbmc_atac) = as.character(rownames(pbmc_atac))
+    
   })
 }
 
@@ -325,6 +330,8 @@ link_genes_to_motifs = function(motif_info){
 #' 
 set_up_sce = function(celltype = "skin"){
   if(celltype=="pbmc"){
+    rownames(pbmc_rna) = as.character(rownames(pbmc_rna))
+    rownames(pbmc_atac) = as.character(rownames(pbmc_atac))
     rna_sce  = SingleCellExperiment(assays = list(counts = pbmc_rna))
     atac_sce = SingleCellExperiment(assays = list(counts = pbmc_atac))
     colData( rna_sce)["atac.bc"] = colnames(pbmc_rna)

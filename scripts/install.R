@@ -21,7 +21,6 @@ knockoff 0.3.3
 vita 1.0.0
 optparse 1.7.1"
 )
-pv = data.frame(package = "BiocManager", version = "1.30.16")
 for(i in rownames(pv)){
   remotes::install_version(
     pv[i, "package"],
@@ -32,25 +31,24 @@ for(i in rownames(pv)){
   )
 }
 
-BiocManager::install(version = "3.14", "motifmatchr")
-# BiocManager::install(
-#   version = "3.14",
-#   pkgs = c( 
-#     "DelayedArray", 
-#     "scater", 
-#     "scran", 
-#     "mbkmeans",
-#     "JASPAR2018", 
-#     "HDF5Array",
-#     "motifmatchr", 
-#     'BiocGenerics', 
-#     'DelayedMatrixStats',
-#     'biomaRt',
-#     "GenomicRanges", 
-#     "BSgenome.Hsapiens.UCSC.hg38",
-#     "BSgenome.Mmusculus.UCSC.mm10"
-#   )
-# )
+BiocManager::install(
+  version = "3.14",
+  pkgs = c(
+    "DelayedArray",
+    "scater",
+    "scran",
+    "mbkmeans",
+    "JASPAR2018",
+    "HDF5Array",
+    "motifmatchr",
+    'BiocGenerics',
+    'DelayedMatrixStats',
+    'biomaRt',
+    "GenomicRanges",
+    "BSgenome.Hsapiens.UCSC.hg38",
+    "BSgenome.Mmusculus.UCSC.mm10"
+  )
+)
 
 
 # Install our package
