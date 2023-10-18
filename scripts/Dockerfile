@@ -26,10 +26,10 @@ RUN R_VERSION=4.1.2 && ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R && ln -s
 RUN R --version
 
 # Get our code
-RUN echo "6" && git clone https://github.com/ekernf01/knockoffs_shareseq.git
+RUN echo "8" && git clone https://github.com/ekernf01/knockoffs_shareseq.git
 
 # Install the R packages we need. This fails and then works due to a "versions" quirk.
-RUN Rscript knockoffs_shareseq/scripts/install.R || Rscript  knockoffs_shareseq/scripts/install.R 
+RUN Rscript knockoffs_shareseq/scripts/install.R || Rscript  knockoffs_shareseq/scripts/install.R > install_log.txt 2> install_err.txt
 
 
 # # Reminder to myself of the boilerplate to rebuild this
