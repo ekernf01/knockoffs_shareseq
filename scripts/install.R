@@ -21,7 +21,7 @@ knockoff 0.3.3
 vita 1.0.0
 optparse 1.7.1"
 )
-# pv = data.frame(package = "optparse", version = "1.7.1")
+pv = data.frame(package = "optparse", version = "1.7.1")
 for(i in rownames(pv)){
   remotes::install_version(
     pv[i, "package"],
@@ -31,8 +31,10 @@ for(i in rownames(pv)){
     repos = "https://cloud.r-project.org"
   )
 }
+
+BiocManager::install(version = "3.14", "motifmatchr")
 # BiocManager::install(
-#   version = 3.14,
+#   version = "3.14",
 #   pkgs = c( 
 #     "DelayedArray", 
 #     "scater", 
