@@ -56,7 +56,7 @@ condition_idx = 61 # For interactive debugging
 #' @param require_motif_support If T, retain an edge only when there is a motif for the TF in a nearby open chromatin region.
 #' @param only_motif_support If T, ignore everything else and just get the FDR you'd see if you used motif-matching as the sole inference method.
 #' 
-do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse_results) + 10, first_job = sample(1:nrow(conditions))){
+do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse_results) + 10, first_job = 1){
   set.seed(conditions[condition_idx,"seed"])
   wait_amount = (condition_idx - first_job) %% nrow(conditions)
   wait_amount = spread_load_by*wait_amount
