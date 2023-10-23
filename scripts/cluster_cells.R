@@ -117,3 +117,4 @@ run_clustering = function(celltype){
 run_clustering(celltype = "pbmc")
 run_clustering(celltype = "skin")
 run_clustering(celltype = "keratinocyte")
+cat("Done.")
