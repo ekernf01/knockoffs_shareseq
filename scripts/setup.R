@@ -263,6 +263,7 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
     seqnames = paste0("chr", gene_coords$chromosome_name),
     ranges = IRanges(gene_coords$start_position, gene_coords$end_position),
     genome = ifelse(normalized_data$species=="mus_musculus", "mm10", "hg38"), 
+    hgnc_symbol = gene_coords$hgnc_symbol
   )
   atac_peaks_gr = GRanges(
     seqnames = atac_peaks[[celltype]]$V1,
@@ -284,7 +285,7 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
   for(i in seq_along(overlaps[[1]])){
     if((i%%10000)==0){cat(i, " of ", length(overlaps[[1]]), "\n")}
     peak_idx = overlaps[i, "enhancer"]
-    gene_idx = overlaps[i, "gene"]
+    gene_idx = gene_coords[overlaps[i, "gene"]]$hgnc_symbol
     overlaps[i, "correlation"] = cor(
       normalized_data$pseudo_bulk_atac[,peak_idx],
       normalized_data$pseudo_bulk_rna[,gene_idx],

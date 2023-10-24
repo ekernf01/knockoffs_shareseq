@@ -297,6 +297,7 @@ do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse
 cat("\n", as.character(Sys.time()), "\n")
 cat("Starting threads for different experiments. See logs/ for progress.\n")
 # Try to re-use any existing results
+# do_one(i, first_job = i)
 results = parallel::mclapply(seq(nrow(conditions)), do_one, reuse_results = T, mc.cores = parallel::detectCores()-1, mc.preschedule = F)
 print(results)
 # Redo failed runs

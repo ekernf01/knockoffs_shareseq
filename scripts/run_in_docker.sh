@@ -3,19 +3,22 @@ Rscript -e 'install.packages("rlookc", repos = NULL, type = "source", lib = Sys.
 
 # Retrieve the datasets used.
 echo "Fetching data..."
-curl https://zenodo.org/record/8350580/files/chip-atlas.zip
-wget https://zenodo.org/record/8350580/files/share_seq.zip
-wget https://zenodo.org/record/8350580/files/multiome_10x.zip
-wget https://zenodo.org/record/8350580/files/mouse_tfs.zip
+curl https://zenodo.org/record/10037580/files/chip-atlas.zip
+wget https://zenodo.org/record/10037580/files/share_seq.zip
+wget https://zenodo.org/record/10037580/files/multiome_10x.zip
+wget https://zenodo.org/record/10037580/files/mouse_tfs.zip
+wget https://zenodo.org/records/10037580/files/human_tfs.zip
 unzip chip-atlas.zip
 unzip share_seq.zip
 unzip multiome_10x.zip
 unzip mouse_tfs.zip
+unzip human_tfs.zip
 mkdir ~/datalake
 mv chip-atlas ~/datalake
 mv share_seq ~/datalake
 mv multiome_10x ~/datalake
 mv mouse_tfs ~/datalake
+mv human_tfs ~/datalake
 
 # Enter the demo repo.
 cd knockoffs_shareseq
