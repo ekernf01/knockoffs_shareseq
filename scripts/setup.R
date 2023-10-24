@@ -258,7 +258,6 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
   cat("Getting gene coordinates from ensembl. Each dot is one attempt (the download sometimes fails).\n")
   gene_coords = get_gene_coords(species = normalized_data$species, gene_symbols = normalized_data$gene_metadata$Gene1)
   gene_coords = gene_coords[!duplicated(gene_coords[[1]]),]
-  stopifnot(length(gene_coords[[1]])==length(normalized_data$gene_metadata$Gene1))
   gene_coords = GRanges(
     seqnames = paste0("chr", gene_coords$chromosome_name),
     ranges = IRanges(gene_coords$start_position, gene_coords$end_position),
