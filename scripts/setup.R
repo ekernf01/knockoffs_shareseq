@@ -283,11 +283,11 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
   cat("Correlating genes with nearby ATAC peaks.\n")
   do_one = function(i){
     if((i%%10000)==0){cat(i, " of ", length(overlaps[[1]]), "\n")}
-    peak_idx = overlaps[i, "enhancer"]
-    gene_idx = gene_coords[overlaps[i, "gene"]]$symbol
     peak_gene_corr = 0
     try(
       {
+        peak_idx = overlaps[i, "enhancer"]
+        gene_idx = gene_coords[overlaps[i, "gene"]]$symbol
         peak_gene_corr = cor(
           normalized_data$pseudo_bulk_atac[,peak_idx],
           normalized_data$pseudo_bulk_rna[,gene_idx],
