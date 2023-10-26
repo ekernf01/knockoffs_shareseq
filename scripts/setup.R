@@ -285,12 +285,18 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
     if((i%%10000)==0){cat(i, " of ", length(overlaps[[1]]), "\n")}
     peak_idx = overlaps[i, "enhancer"]
     gene_idx = gene_coords[overlaps[i, "gene"]]$symbol
-    return(cor(
-      normalized_data$pseudo_bulk_atac[,peak_idx],
-      normalized_data$pseudo_bulk_rna[,gene_idx],
-    ))
+    peak_gene_corr = 0
+    try(
+      {
+        peak_gene_corr = cor(
+          normalized_data$pseudo_bulk_atac[,peak_idx],
+          normalized_data$pseudo_bulk_rna[,gene_idx],
+        )
+      }
+    )
+    return(peak_gene_corr)
   }
-  overlaps[, "correlation"] = unlist(parallel::mclapply(seq_along(overlaps[[1]]), do_one))
+  overlaps[, "correlation"] = unlist(parallel::mclapply(seq_along(overlaps[[1]]), do_one, mc.cores = parallel::detectCores()-1))
   overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
   ggplot2::ggplot(overlaps) +
     geom_hex(aes(distance, correlation)) +
