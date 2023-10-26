@@ -19,6 +19,7 @@ Seurat 4.3.0.1
 BiocManager 1.30.16
 knockoff 0.3.3
 vita 1.0.0
+hexbin 1.28.3
 optparse 1.7.1"
 )
 for(i in rownames(pv)){

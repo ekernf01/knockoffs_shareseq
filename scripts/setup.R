@@ -281,15 +281,16 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
   )
   overlaps$correlation = NA
   cat("Correlating genes with nearby ATAC peaks.\n")
-  for(i in seq_along(overlaps[[1]])){
+  do_one = function(i){
     if((i%%10000)==0){cat(i, " of ", length(overlaps[[1]]), "\n")}
     peak_idx = overlaps[i, "enhancer"]
     gene_idx = gene_coords[overlaps[i, "gene"]]$symbol
-    overlaps[i, "correlation"] = cor(
+    return(cor(
       normalized_data$pseudo_bulk_atac[,peak_idx],
       normalized_data$pseudo_bulk_rna[,gene_idx],
-    )
+    ))
   }
+  overlaps[, "correlation"] = parallel::pbmclapply(seq_along(overlaps[[1]]), do_one)
   overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
   ggplot2::ggplot(overlaps) +
     geom_hex(aes(distance, correlation)) +

@@ -64,12 +64,12 @@ run_clustering = function(celltype){
         raise_to_power(2, .) %>%
         magrittr::subtract(1) %>%
         sum
-      factor_to_get_back_to_fucking_cpm = 1e6 / totals
+      factor_to_get_back_to_cpm = 1e6 / totals
       if(sum(clusters==cluster_idx)>1){
         cluster_variances = assay(single_cell_experiments$rna_sce, "logcounts")[, clusters==cluster_idx] %>%
           raise_to_power(2, .) %>%
           magrittr::subtract(1) %>%
-          multiply_by(factor_to_get_back_to_fucking_cpm) %>%
+          multiply_by(factor_to_get_back_to_cpm) %>%
           DelayedMatrixStats::rowVars()
       } else {
         rep(NA, dim(single_cell_experiments$rna_sce)[[1]])
