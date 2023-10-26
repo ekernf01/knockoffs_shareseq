@@ -290,7 +290,7 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
       normalized_data$pseudo_bulk_rna[,gene_idx],
     ))
   }
-  overlaps[, "correlation"] = parallel::pbmclapply(seq_along(overlaps[[1]]), do_one)
+  overlaps[, "correlation"] = unlist(parallel::mclapply(seq_along(overlaps[[1]]), do_one))
   overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
   ggplot2::ggplot(overlaps) +
     geom_hex(aes(distance, correlation)) +
