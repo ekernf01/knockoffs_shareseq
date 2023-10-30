@@ -47,12 +47,19 @@ Rscript ../scripts/install.R
 Rscript ../scripts/install.R          &> logs/install.txt # Yes, it is necessary to run this twice
 nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &
 wait
+# We do three re-tries because sometimes a job fails, e.g. out of memory. 
+# It's written in a way that saves some work and picks up where it left off to a limited extent.
 nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
 wait 
+nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
+wait 
+nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
+wait 
+# Finally, make the plots. 
 nohup Rscript ../scripts/make_additional_plots.R
 
 # # Optional step: export results (edit this to point to your S3)
 # aws s3 sync .. s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq
 # # On laptop, to get results:
 # cd /home/ekernf01/Desktop/jhu/research/projects/knockoffs/applications/share-seq
-# aws s3 sync s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq/v12 v12
+# aws s3 sync s3://cahanlab/eric.kernfeld/research/projects/knockoffs/applications/share-seq/v14 v14

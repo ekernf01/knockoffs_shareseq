@@ -296,7 +296,7 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
     )
     return(peak_gene_corr)
   }
-  overlaps[, "correlation"] = unlist(parallel::mclapply(seq_along(overlaps[[1]]), do_one, mc.cores = parallel::detectCores()-1))
+  overlaps[, "correlation"] = unlist(parallel::mclapply(seq_along(overlaps[[1]]), do_one, mc.cores = 1))
   overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
   ggplot2::ggplot(overlaps) +
     geom_hex(aes(distance, correlation)) +

@@ -28,8 +28,15 @@ mkdir v14
 cd v14
 
 mkdir logs
-nohup Rscript ../scripts/cluster_cells.R            &> logs/cluster.txt &
+nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &
 wait
-nohup Rscript ../scripts/find_regulators.R          &> logs/knockoffs.txt 
+# We do three re-tries because sometimes a job fails, e.g. out of memory. 
+# It's written in a way that saves some work and picks up where it left off to a limited extent.
+nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
 wait 
+nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
+wait 
+nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
+wait 
+# Finally, make the plots. 
 nohup Rscript ../scripts/make_additional_plots.R

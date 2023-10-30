@@ -60,7 +60,7 @@ do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse
   set.seed(conditions[condition_idx,"seed"])
   wait_amount = (condition_idx - first_job) %% nrow(conditions)
   wait_amount = spread_load_by*wait_amount
-  print(paste0("Waiting ", wait_amount, " seconds to spread out the peak memory consumtion."))
+  print(paste0("Waiting ", wait_amount, " seconds to spread out the peak memory consumption."))
   Sys.sleep(wait_amount) #spread out peak RAM
   dir.create("logs", showWarnings = F)
   withr::with_output_sink(file.path("logs", condition_idx), {
