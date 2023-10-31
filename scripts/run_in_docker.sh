@@ -39,4 +39,4 @@ wait
 nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
 wait 
 # Finally, make the plots. 
-nohup Rscript ../scripts/make_additional_plots.R
+nohup Rscript ../scripts/make_additional_plots.R &> logs/plots.txt &
