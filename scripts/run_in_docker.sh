@@ -1,6 +1,3 @@
-# Install our package from local source code
-Rscript -e 'install.packages("rlookc", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))'
-
 # Retrieve the datasets used.
 echo "Fetching data..."
 curl https://zenodo.org/record/10037580/files/chip-atlas.zip
@@ -23,7 +20,7 @@ mv human_tfs ~/datalake
 # Enter the demo repo.
 cd knockoffs_shareseq
 
-# Change this if you want to run a new set of conditions
+# Change this if you want to modify experiments without overwriting previous results
 mkdir v14
 cd v14
 

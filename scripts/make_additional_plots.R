@@ -1,4 +1,4 @@
-# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v13")
+# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v15")
 source("../scripts/setup.R")
 sanitize_names = function(df){
   colnames(df) = colnames(df) %>% 
@@ -59,7 +59,7 @@ for(condition_idx in seq(nrow(conditions))){
   })
 }
 all_calibration %<>% Reduce(f = rbind)
-all_calibration$celltype %<>% factor(levels = c("skin", "keratinocyte", "pbmc"))
+all_calibration$celltype %<>% factor(levels = c("skin", "keratinocyte", "pbmc", "tcell"))
 all_calibration$tf_activity_type %<>% factor(levels = c("rna", "motif", "both"))
 # Plot naive versus "shrinkage" (corpcor gaussian) knockoffs
 all_calibration %>%
@@ -87,6 +87,11 @@ all_calibration %>%
   ylab("Observed FDR")
 ggsave("shareseq_naive_vs_gaussian.pdf", width = 5, height = 4)
 ggsave("shareseq_naive_vs_gaussian.svg", width = 5, height = 4)
+
+# A supplemental table
+all_calibration %>%
+  subset(expected_fdr==0.2) %>%
+  write.csv("results_fdr=20pct.csv")
 
 # Plot initial ChIP results
 all_calibration %>%
@@ -141,7 +146,7 @@ all_calibration %>%
     x = expected_fdr, 
     y = observed_fdr,
     color = as.character(cell_count_cutoff) )) +
-  facet_wrap(~celltype) +
+  facet_grid(1~celltype) +
   ggtitle("Conditional independence testing on multi-omics data", "Real TF expression with additional error and simulated targets") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
@@ -151,8 +156,8 @@ all_calibration %>%
   ylab("Observed FDR") + 
   labs(color = "Cell count cutoff") + 
   theme(legend.position = "bottom")
-ggsave("shareseq_measurement_error.pdf", width = 4, height = 2.5)
-ggsave("shareseq_measurement_error.svg", width = 4, height = 2.5)
+ggsave("shareseq_measurement_error.pdf", width = 5.5, height = 3)
+ggsave("shareseq_measurement_error.svg", width = 5.5, height = 3)
 
 # Show results with different TF activities
 all_calibration %>%
@@ -202,7 +207,7 @@ all_calibration %>%
     x = expected_fdr, 
     y = observed_fdr,
     color = condition_on )) +
-  facet_wrap(~celltype) +
+  facet_grid(1~celltype) +
   ggtitle("TRN inference on multi-omics data", "Real data") + 
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
@@ -211,8 +216,8 @@ all_calibration %>%
   ylab("Observed FDR") + 
   theme(legend.position = "bottom") + 
   scale_color_manual(values = c("green", "black"))
-ggsave("shareseq_condition_confounders.pdf", width = 4.5, height = 2.5)
-ggsave("shareseq_condition_confounders.svg", width = 4.5, height = 2.5)
+ggsave("shareseq_condition_confounders.pdf", width = 5.5, height = 3)
+ggsave("shareseq_condition_confounders.svg", width = 5.5, height = 3)
 
 # Show results with motif support
 all_calibration %>%

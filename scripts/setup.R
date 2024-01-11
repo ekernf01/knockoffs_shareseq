@@ -1,4 +1,4 @@
-# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v13")
+# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v16")
 
 # Setup
 suppressPackageStartupMessages({
@@ -11,6 +11,9 @@ suppressPackageStartupMessages({
   library("Seurat")
   library("scran")
   library("optparse")
+  library("SummarizedExperiment")
+  library("BSgenome.Hsapiens.UCSC.hg38")
+  library("BSgenome.Mmusculus.UCSC.mm10")
 })
 set.seed(0)
 
@@ -32,10 +35,12 @@ create_pseudobulk_path = function(celltype){
     pseudobulk_path = "input_pseudobulk_keratinocyte"
   } else if(  celltype == "skin" ){
     pseudobulk_path = "input_pseudobulk"
+  } else if(  celltype == "tcell" ){
+    pseudobulk_path = "input_pseudobulk_pbmc"
   } else if(  celltype == "pbmc" ){
     pseudobulk_path = "input_pseudobulk_pbmc"
   } else {
-    stop(c("celltype must be pbmc, skin, or keratinocyte. Provided value: ", celltype))
+    stop(c("celltype must be pbmc, tcell, skin, or keratinocyte. Provided value: ", celltype))
   }
   dir.create(pseudobulk_path, showWarnings = F)
   pseudobulk_path
@@ -61,7 +66,10 @@ atac_peaks = list()
 {
   withr::with_dir( file.path(DATALAKE, "multiome_10x", "pbmc"), {
     pbmc_all = HDF5Array::TENxMatrix("10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5", group = "matrix")
-    x = rhdf5::h5read("~/datalake/multiome_10x/pbmc/10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5", name = "/matrix/features/id")
+    x = rhdf5::h5read(
+      "10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5",
+      name = "/matrix/features/id"
+    )
     rownames(pbmc_all) = as.character(x)
     
     pbmc_rna = pbmc_all[ grepl("ENSG", rownames(pbmc_all)), ]
@@ -81,7 +89,7 @@ atac_peaks = list()
     pbmc_rna = pbmc_rna[!duplicated(rownames(pbmc_rna)), ]
     
     # Peak filtering
-    atac_peaks$pbmc = read.csv("10k_PBMC_Multiome_nextgem_Chromium_Controller_atac_peaks.bed", sep = "", header = F, comment.char = "#")
+    atac_peaks$pbmc = atac_peaks$tcell = read.csv("10k_PBMC_Multiome_nextgem_Chromium_Controller_atac_peaks.bed", sep = "", header = F, comment.char = "#")
     peaks_keep = grepl("^chr", atac_peaks$pbmc$V1)
     pbmc_atac = pbmc_atac[peaks_keep,]
     atac_peaks$pbmc = atac_peaks$pbmc[peaks_keep,]
@@ -145,18 +153,38 @@ TAC-2,keratinocyte"
   share_seq_skin_metadata %<>% merge(supertypes, by = "celltype")
 }
 
+pbmc_markers = read.csv(text = 
+  'celltype,marker
+  "CD4 T Cell","IL7R"
+  "CD4 T Cell","CCR7"
+  "CD14 Monocyte","CD14"
+  "CD14 Monocyte","LYZ"
+  "B cell","MS4A1"
+  "B cell","CD19"
+  "CD8 T Cell","CD8A"
+  "CD8 T Cell","CD3E"
+  "CD4 T Cell","CD3E"
+  "FCGR3A Monocyte","FCGR3A"
+  "FCGR3A Monocyte","MS4A7"
+  "Natural Killer Cell","GNLY"
+  "Natural Killer Cell","NKG7"
+  "CD8 T Cell","NKG7"
+  "Natural Killer Cell","NCR1"
+  "Dendritic Cell","FCER1A"
+  "Dendritic Cell","CST3"')
+
 # Skin ATAC feature extraction & pruning: global motif activity per cell and motif-peak-gene network construction
 {  
   motif_info = list(
     mouse_motifs <- TFBSTools::getMatrixSet(
-      JASPAR2018::JASPAR2018, 
+      JASPAR2016::JASPAR2016, 
       opts = list(
         "species" = c(10090), # mouse
         "all_versions" = TRUE
       )
     ),
     human_motifs <- TFBSTools::getMatrixSet(
-      JASPAR2018::JASPAR2018, 
+      JASPAR2016::JASPAR2016, 
       opts = list(
         "species" = c( 9606), # human
         "all_versions" = TRUE
@@ -179,13 +207,48 @@ TAC-2,keratinocyte"
     genome = "hg38",
     out = "matches"
   )
+  motif_info$tcell = motif_info$pbmc
+  
 }
 
+
+run_chromvar = function(counts, peaks, celltype){
+  if(celltype=="keratinocyte"){celltype = "skin"}
+  if(celltype=="blood"){celltype = "pbmc"}
+  if(celltype=="tcell"){celltype = "pbmc"}
+  if(celltype=="skin"){
+    genome = BSgenome.Mmusculus.UCSC.mm10::BSgenome.Mmusculus.UCSC.mm10
+    species = "Mus musculus"
+  } else if(celltype=="pbmc"){
+    genome = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38
+    species = "Homo sapiens"
+  } else {
+    stop("Cell type must be pbmc, tcell, blood, keratinocyte, or skin")
+  }
+  BiocParallel::register(BiocParallel::SerialParam())
+  atac_peaks_gr = GRanges(
+    seqnames = atac_peaks[[celltype]]$V1,
+    ranges = IRanges(atac_peaks[[celltype]]$V2, atac_peaks[[celltype]]$V3),
+    genome = ifelse(species=="Mus musculus", "mm10", "hg38")
+  )
+  example_counts <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = t(counts)), rowRanges = atac_peaks_gr)
+  example_counts <- example_counts[rowSums(counts(example_counts)) > 0]
+  example_counts <- chromVAR::addGCBias(example_counts, 
+                                        genome = genome)
+  motifs <- chromVAR::getJasparMotifs(species = species)
+  motif_ix <- motifmatchr::matchMotifs(motifs, example_counts, 
+                                       genome = genome)
+  example_counts = chromVAR::computeDeviations(object = example_counts, annotations = motif_ix)
+  z = t(assay(example_counts, "deviations"))
+  colnames(z) %<>% gsub("_.*$", "", .)
+  return(z)
+}
 
 # Load chip-atlas target gene lists
 load_chip_data = function(celltype){
   if(celltype=="keratinocyte"){celltype = "skin"}
   if(celltype=="pbmc"){celltype = "blood"}
+  if(celltype=="tcell"){celltype = "blood"}
   withr::with_dir(
     DATALAKE,
     {
@@ -272,7 +335,7 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
   overlaps = GenomicRanges::findOverlaps(
     gene_coords,
     atac_peaks_gr,
-    maxgap = 1e5
+    maxgap = 5e4
   )
   overlaps %<>% as.data.frame() %>% set_colnames(c("gene", "enhancer"))
   overlaps[["distance"]] = GenomicRanges::distance(
@@ -280,7 +343,7 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
     atac_peaks_gr[overlaps[["enhancer"]]]
   )
   overlaps$correlation = NA
-  cat("Correlating genes with nearby ATAC peaks.\n")
+  cat("\nCorrelating genes with nearby ATAC peaks.\n")
   do_one = function(i){
     if((i%%10000)==0){cat(i, " of ", length(overlaps[[1]]), "\n")}
     peak_gene_corr = 0
@@ -297,12 +360,13 @@ get_motif_supported_hypotheses = function(normalized_data, celltype){
     return(peak_gene_corr)
   }
   overlaps[, "correlation"] = unlist(parallel::mclapply(seq_along(overlaps[[1]]), do_one, mc.cores = 4))
-  overlaps %<>% dplyr::mutate(is_kept = correlation > 0 | distance < 2e3)
+  overlaps %<>% dplyr::mutate(is_kept = correlation > 0.2 | distance < 2e3)
   ggplot2::ggplot(overlaps) +
     geom_hex(aes(distance, correlation)) +
     facet_wrap(~is_kept)
   ggtitle("Enhancer-gene pairing in skin SHARE-seq data")
   ggsave("enhancer_pairing.pdf", width = 5, height = 5)
+  write.csv(overlaps, "enhancer_pairing.csv")
   enhancer_gene_links = subset(overlaps, is_kept)
   enhancer_gene_links$Gene2 = colnames(normalized_data$pseudo_bulk_rna)[enhancer_gene_links$gene]
   motif_enhancer_links = 
@@ -336,7 +400,7 @@ link_genes_to_motifs = function(motif_info){
 #' the RNA cell barcodes should be equal to, or a subset of, the ATAC ones. 
 #' 
 set_up_sce = function(celltype = "skin"){
-  if(celltype=="pbmc"){
+  if(celltype %in% c("pbmc", "tcell")){
     rownames(pbmc_rna) = as.character(rownames(pbmc_rna))
     rownames(pbmc_atac) = as.character(rownames(pbmc_atac))
     rna_sce  = SingleCellExperiment(assays = list(counts = pbmc_rna))
@@ -344,6 +408,9 @@ set_up_sce = function(celltype = "skin"){
     colData( rna_sce)["atac.bc"] = colnames(pbmc_rna)
     colData(atac_sce)["atac.bc"] = colnames(pbmc_rna)
     colData(rna_sce)[["celltype"]] = "unknown"
+    keep = colSums(counts(rna_sce))>2000
+    rna_sce = rna_sce[, keep]
+    atac_sce = atac_sce[, keep]
   } else if(celltype %in% c("skin", "keratinocyte")){
     rna_sce = SingleCellExperiment(assays = list(counts = t(skin_rna)))
     colData(rna_sce)[["rna.bc"]] = rownames(skin_rna)
@@ -365,7 +432,7 @@ set_up_sce = function(celltype = "skin"){
                               all.x = T,
                               all.y = F)
   } else {
-    stop(c("celltype must be pbmc, skin, or keratinocyte. Provided value: ", celltype))
+    stop(c("celltype must be pbmc, tcell, skin, or keratinocyte. Provided value: ", celltype))
   }
   # Exclude cells we don't have ChIP data for
   if(celltype == "keratinocyte"){
@@ -405,7 +472,7 @@ set_up_share_skin_pseudobulk = function(conditions, i){
           read.csv("mouse_tfs/Mus_musculus_TF_cofactors.txt", sep = "\t")[tf_fields]
         )
       })
-  } else if(celltype =="pbmc"){
+  } else if( celltype %in% c("pbmc", "blood", "tcell") ){
     species = "homo_sapiens"
     withr::with_dir(
       DATALAKE,
@@ -415,14 +482,12 @@ set_up_share_skin_pseudobulk = function(conditions, i){
       }
     )
   } else {
-    stop(paste0("celltype must be 'skin', 'keratinocyte', or 'pbmc'; got ", celltype))
+    stop(paste0("celltype must be 'skin', 'keratinocyte', 'blood', 'tcell', or 'pbmc'; got ", celltype))
   }
-  
   
   # Load expression pseudo-bulk data
   withr::with_dir(create_pseudobulk_path(celltype), {
-    pseudo_bulk_atac = NULL
-    try({pseudo_bulk_atac = read.csv("atac_pseudo_bulk.csv",     row.names = 1) %>% as.matrix})
+    pseudo_bulk_atac = read.csv("atac_pseudo_bulk.csv",     row.names = 1) %>% as.matrix
     pseudo_bulk_rna       = read.csv("rna_pseudo_bulk.csv",      row.names = 1) %>% as.matrix
     pseudo_bulk_rna_var   = read.csv("rna_pseudo_bulk_vars.csv", row.names = 1) %>% as.matrix
     pseudo_bulk_metadata  = read.csv("metacell_metadata.csv",    row.names = 1)
@@ -431,6 +496,15 @@ set_up_share_skin_pseudobulk = function(conditions, i){
     pseudo_bulk_rna_var = pseudo_bulk_rna_var[,non_empty_clusters]
   })
   
+  # subset T cells
+  if(celltype == "tcell"){
+    metacells_keep = pseudo_bulk_metadata$largest_subpopulation %in% c("  CD8 T Cell", "  CD4 T Cell,  CD8 T Cell", "  CD4 T Cell")
+    try({pseudo_bulk_atac     %<>% extract( , metacells_keep)})
+    pseudo_bulk_rna      %<>% extract( , metacells_keep)
+    pseudo_bulk_rna_var  %<>% extract( , metacells_keep)
+    pseudo_bulk_metadata %<>% extract( metacells_keep , )  
+  }
+
   # Exclude clusters with too few cells.
   write.table( table(pseudo_bulk_metadata$total_cell_count >= cell_count_cutoff), "n_clusters_passing_cutoff.csv" )
   metacells_keep = pseudo_bulk_metadata$total_cell_count >= cell_count_cutoff
@@ -486,7 +560,7 @@ set_up_share_skin_pseudobulk = function(conditions, i){
     pseudo_bulk_rna_noisy      = pseudo_bulk_rna_noisy,
     pseudo_bulk_rna_var        = pseudo_bulk_rna_var,
     pseudo_bulk_atac           = pseudo_bulk_atac,
-    motif_activity             = ( pseudo_bulk_atac %*% motifmatchr::motifMatches(motif_info[[celltype]]) ) , 
+    motif_activity             = run_chromvar( pseudo_bulk_atac, peaks, celltype ) , 
     species = species
   ) )
 }

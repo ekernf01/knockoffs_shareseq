@@ -18,6 +18,34 @@ run_clustering = function(celltype){
                                  clusters = 100,
                                  reduceMethod = "PCA")
   colData(single_cell_experiments$rna_sce)[["cluster"]] = clusters$Clusters
+  if(celltype=="pbmc"){
+    pseudo_bulk = scater::sumCountsAcrossCells(single_cell_experiments$rna_sce, ids = single_cell_experiments$rna_sce[["cluster"]]) %>%
+      assay("sum")
+    celltype_by_cluster = -pseudo_bulk[pbmc_markers$marker,] %>%
+      apply(1, scale) %>% set_rownames(colnames(pseudo_bulk)) %>%
+      apply(1, rank) %>%  set_colnames(colnames(pseudo_bulk)) %>%
+      reshape2::melt() %>%
+      set_colnames(c("marker", "cluster", "rank")) %>%
+      subset(rank<=2) %>%
+      merge(pbmc_markers) %>% 
+      dplyr::group_by(cluster) %>%
+      dplyr::summarise(celltypes = paste(names(table(celltype)[table(celltype)==max(table(celltype))]), collapse = ","), markers = paste(marker, collapse = ",")) 
+    write.csv(celltype_by_cluster, "pbmc_celltype_by_cluster.csv")
+    markers_by_cluster = pseudo_bulk[rowSums(pseudo_bulk)>100, ] %>%
+      add(1) %>%
+      log2 %>%
+      apply(1, scale, center = TRUE, scale = FALSE) %>% set_rownames(colnames(pseudo_bulk)) %>%
+      t %>%
+      reshape2::melt() %>%
+      set_colnames(c("marker", "cluster", "log2fc")) %>%
+      dplyr::group_by(cluster) %>% 
+      dplyr::top_n(20) %>%
+      dplyr::arrange(cluster, -log2fc)
+    write.csv(markers_by_cluster, "pbmc_markers_by_cluster.csv")
+    celltype_by_cluster = setNames(celltype_by_cluster$celltypes, celltype_by_cluster$cluster)
+    colData(single_cell_experiments$rna_sce)[["celltype"]] = celltype_by_cluster[colData(single_cell_experiments$rna_sce)[["cluster"]]]
+  }
+  
   cat("Running tsne. \n")
   single_cell_experiments$rna_sce <- scater::runTSNE(single_cell_experiments$rna_sce,
                                                           num_dim = 2,
@@ -38,7 +66,7 @@ run_clustering = function(celltype){
 
   withr::with_dir(create_pseudobulk_path(celltype), {
     dir.create("description", recursive = F, showWarnings = F)
-    for( colour_by in rev( c( "cluster", "celltype", "sizeFactor" ) ) ){
+    for( colour_by in rev( c( "cluster", "celltype", "sizeFactor", pbmc_markers$marker) ) ){
       try({scater::plotTSNE(single_cell_experiments$rna_sce) + ggplot2::coord_fixed()})
       try({scater::plotTSNE(single_cell_experiments$rna_sce, colour_by = colour_by) + ggplot2::coord_fixed()})
       ggplot2::ggsave(paste0("description/", colour_by, ".png"), width = 10, height = 6)

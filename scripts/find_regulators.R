@@ -35,16 +35,17 @@ conditions = Reduce(
   list(
     conditions, 
     dplyr::mutate(conditions, celltype="keratinocyte"),
-    dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="pbmc")
+    dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="pbmc"),
+    dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="tcell")
   )
 )
 rownames(conditions) = NULL
 
 write.csv(conditions, "experiments_to_run.csv")
 old_wd = getwd()
-condition_idx = 20 # For interactive debugging
+condition_idx = 1 # For interactive debugging
 
-#' Run a single experiment described by a row of the 'conditions' dataframe defined above.
+#' Run a single experiment described by a row of the 'conditions' dataframe defined above. Its columns are documented here as if they were parameters.
 #'
 #' @param knockoff_type 'permuted' or 'gaussian'. 
 #' @param tf_activity 'rna' or 'motif' or 'both'. How to extract TF activities. 
@@ -52,16 +53,12 @@ condition_idx = 20 # For interactive debugging
 #' @param cell_count_cutoff If a cluster has fewer cells than this, it gets excluded from our analysis.
 #' @param error_mode If 'none', take no special action. If 'resample', replace mRNA count Xij with a Poisson(Xij). If 'downsample', use Seurat's SampleUMI function to thin out the data.
 #' @param seed Random seed in case you want to replicate experiments. 
-#' @param celltype skin: all the mouse skin SHARE data. keratinocyte: a subset of the mouse skin SHARE data. pbmc: the human data. 
+#' @param celltype skin: all the mouse skin SHARE data. keratinocyte: a subset of the mouse skin SHARE data. pbmc: the human data. tcell: a subset of the pbmc data.
 #' @param require_motif_support If T, retain an edge only when there is a motif for the TF in a nearby open chromatin region.
 #' @param only_motif_support If T, ignore everything else and just get the FDR you'd see if you used motif-matching as the sole inference method.
 #' 
-do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse_results) + 10, first_job = 1){
+do_one = function(condition_idx, reuse_results = F){
   set.seed(conditions[condition_idx,"seed"])
-  wait_amount = (condition_idx - first_job) %% nrow(conditions)
-  wait_amount = spread_load_by*wait_amount
-  print(paste0("Waiting ", wait_amount, " seconds to spread out the peak memory consumption."))
-  Sys.sleep(wait_amount) #spread out peak RAM
   dir.create("logs", showWarnings = F)
   withr::with_output_sink(file.path("logs", condition_idx), {
     withr::with_message_sink(file.path("logs", condition_idx), {
@@ -93,6 +90,22 @@ do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse
           if(tf_activity_type == "motif"){
             tf_activity = normalized_data$motif_activity
             colnames(tf_activity) = colnames(normalized_data$motif_activity)
+            differential_motifs = 
+              normalized_data$motif_activity %>% 
+              scale %>% 
+              data.frame %>%
+              tibble::rownames_to_column("cluster") %>%
+              tidyr::pivot_longer(matches("MA"), names_to = "motif", values_to = "Zscore") %>%
+              dplyr::group_by(cluster) %>%
+              dplyr::top_n(Zscore, n=5) %>%
+              dplyr::ungroup() %>%
+              dplyr::mutate(cluster = gsub("X", "", cluster)) %>%
+              merge(link_genes_to_motifs(motif_info)) %>% 
+              merge(normalized_data$pseudo_bulk_metadata) %>%
+              dplyr::arrange(largest_subpopulation, -Zscore) 
+            differential_motifs %>%
+              write.csv("motif_score_enrichment.csv")
+            
           } else if(tf_activity_type=="both"){
             tf_activity =       cbind(         normalized_data$motif_activity,           normalized_data$tf_expression)
             colnames(tf_activity) = c(colnames(normalized_data$motif_activity), colnames(normalized_data$tf_expression))
@@ -167,7 +180,7 @@ do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse
           cat("\n", as.character(Sys.time()), "\n")
           cat("\nChecking calibration with real targets\n")
           cat("Computing knockoff statistics. This may take a while.\n")
-          w = lapply(
+          w = parallel::mclapply(
             seq(ncol(normalized_data$non_tf_expression)),
             function(i){
               if(i %% 100 == 0){ cat( "\n", i, "/", ncol(normalized_data$non_tf_expression) )}
@@ -176,7 +189,9 @@ do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse
                 X   = tf_activity,
                 X_k = knockoffs
               )
-            }
+            }, 
+            mc.cores = parallel::detectCores()-1, 
+            mc.preschedule = F
           )
           length(w[[1]])
           length(w)
@@ -296,13 +311,12 @@ do_one = function(condition_idx, reuse_results = F, spread_load_by = 110*(!reuse
 
 cat("\n", as.character(Sys.time()), "\n")
 cat("Starting threads for different experiments. See logs/ for progress.\n")
-# Try to re-use any existing results
-# do_one(condition_idx, first_job = condition_idx)
-results = parallel::mclapply(seq(nrow(conditions)), do_one, reuse_results = T, mc.cores = parallel::detectCores()-1, mc.preschedule = F)
+# Try to re-use any existing results (this is useful for interacting with the code)
+results = lapply(seq(nrow(conditions)), do_one, reuse_results = F)
 print(results)
 # Redo failed runs
 todo = which(!sapply(results, is.null))
-results2 = parallel::mclapply(todo, do_one, first_job = todo[[1]], mc.cores = parallel::detectCores()-1, mc.preschedule = F)
-print(results2)
+results = lapply(todo, do_one, first_job = todo[[1]])
+print(results)
 cat("\n", as.character(Sys.time()), "\n")
 cat("Done.\n")

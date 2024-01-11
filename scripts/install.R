@@ -21,7 +21,8 @@ knockoff 0.3.3
 vita 1.0.0
 hexbin 1.28.3
 svglite 2.1.2
-optparse 1.7.1"
+optparse 1.7.1
+dbplyr 2.3.4"
 )
 for(i in rownames(pv)){
   remotes::install_version(
@@ -40,15 +41,19 @@ BiocManager::install(
     "scater",
     "scran",
     "mbkmeans",
+    "JASPAR2016",
     "JASPAR2018",
     "HDF5Array",
     "motifmatchr",
     'BiocGenerics',
+    "BiocFileCache",
     'DelayedMatrixStats',
     'biomaRt',
     "GenomicRanges",
+    "RangedSummarizedExperiment",
     "BSgenome.Hsapiens.UCSC.hg38",
-    "BSgenome.Mmusculus.UCSC.mm10"
+    "BSgenome.Mmusculus.UCSC.mm10", 
+    "chromVAR"
   )
 )
 
