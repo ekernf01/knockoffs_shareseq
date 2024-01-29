@@ -48,10 +48,10 @@ run_clustering = function(celltype){
   
   cat("Running tsne. \n")
   single_cell_experiments$rna_sce <- scater::runTSNE(single_cell_experiments$rna_sce,
-                                                          num_dim = 2,
-                                                          dimred = "PCA",
-                                                          n_dimred = 50)
-
+                                                     num_dim = 2,
+                                                     dimred = "PCA",
+                                                     n_dimred = 50)
+  
   # Add same clusters to the ATAC data
   colData(single_cell_experiments$atac_sce) =
     merge(colData(single_cell_experiments$atac_sce),
@@ -68,7 +68,7 @@ run_clustering = function(celltype){
     dir.create("description", recursive = F, showWarnings = F)
     for( colour_by in rev( c( "cluster", "celltype", "sizeFactor", pbmc_markers$marker) ) ){
       try({scater::plotTSNE(single_cell_experiments$rna_sce) + ggplot2::coord_fixed()})
-      try({scater::plotTSNE(single_cell_experiments$rna_sce, colour_by = colour_by) + ggplot2::coord_fixed()})
+      try({scater::plotTSNE(single_cell_experiments$rna_sce, colour_by = colour_by) + ggplot2::coord_fixed()}, silent = T)
       ggplot2::ggsave(paste0("description/", colour_by, ".png"), width = 10, height = 6)
     }
 

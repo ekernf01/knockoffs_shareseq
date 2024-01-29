@@ -1,4 +1,3 @@
-# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v15")
 source("../scripts/setup.R")
 sanitize_names = function(df){
   colnames(df) = colnames(df) %>% 
@@ -47,7 +46,10 @@ for(condition_idx in seq(nrow(conditions))){
   # Grab outputs and make them uniform
   withr::with_dir(new_wd, {
     all_calibration[[condition_idx]] = list(
-      read.csv("calibration/chip_calibration.csv", row.names = 1) %>%
+      read.csv("calibration/decoy_calibration.csv", row.names = 1) %>%
+        cbind(evaluation="decoy") %>% 
+        sanitize_names,
+        read.csv("calibration/chip_calibration.csv", row.names = 1) %>%
         cbind(evaluation="chip") %>% 
         sanitize_names,
       read_simulation_if_exists(error_mode=error_mode)
@@ -59,8 +61,75 @@ for(condition_idx in seq(nrow(conditions))){
   })
 }
 all_calibration %<>% Reduce(f = rbind)
-all_calibration$celltype %<>% factor(levels = c("skin", "keratinocyte", "pbmc", "tcell"))
+all_calibration$celltype %<>% factor(levels = c("skin", "keratinocyte", "pbmc", "tcell", "pbmc_subset"))
 all_calibration$tf_activity_type %<>% factor(levels = c("rna", "motif", "both"))
+
+# These plots are for an internal talk
+create_experiment_path(conditions, 49) %>% 
+  file.path("all_hypotheses.csv.gz") %>%
+  read.csv() %>% 
+  subset(q <= 0.1, select = "Gene1") %>% 
+  table %>%
+  table %>%
+  as.data.frame() %>%
+  set_colnames(c("outdegree_char", "frequency")) %>%
+  dplyr::mutate(outdegree = as.numeric(outdegree_char)) %>%
+  ggplot() + geom_point(
+    aes(y = frequency, x = outdegree)
+  ) + 
+  scale_x_log10() + 
+  scale_y_log10() +
+  xlab("out-degree") +
+  ylab("frequency") + 
+  ggtitle("All PBMC")
+create_experiment_path(conditions, 65) %>% 
+  file.path("all_hypotheses.csv.gz") %>%
+  read.csv() %>% 
+  subset(q <= 0.1, select = "Gene1") %>% 
+  table %>%
+  table %>%
+  as.data.frame() %>%
+  set_colnames(c("outdegree_char", "frequency")) %>%
+  dplyr::mutate(outdegree = as.numeric(outdegree_char)) %>%
+  ggplot() + geom_point(
+    aes(y = frequency, x = outdegree)
+  ) + 
+  scale_x_log10() + 
+  scale_y_log10() +
+  xlab("out-degree") +
+  ylab("frequency") + 
+  ggtitle("T cell")
+
+
+# Extract a few key numbers mentioned in the text
+total_findings_1_percent = list(
+  skin_basic = 
+    create_experiment_path(conditions, 1) %>% 
+    file.path("all_hypotheses.csv.gz") %>%
+    read.csv() %>% 
+    subset(q <= 0.1) %>% 
+    nrow,
+  pbmc_basic = 
+    create_experiment_path(conditions, 49) %>% 
+    file.path("all_hypotheses.csv.gz") %>%
+    read.csv() %>% 
+    subset(q <= 0.1) %>% 
+    nrow, 
+  skin_100 = 
+    create_experiment_path(conditions, 2) %>% 
+    file.path("all_hypotheses.csv.gz") %>%
+    read.csv() %>% 
+    subset(q <= 0.1) %>% 
+    nrow,
+  pbmc_100 = 
+    create_experiment_path(conditions, 50) %>% 
+    file.path("all_hypotheses.csv.gz") %>%
+    read.csv() %>% 
+    subset(q <= 0.1) %>% 
+    nrow
+)
+total_findings_1_percent
+
 # Plot naive versus "shrinkage" (corpcor gaussian) knockoffs
 all_calibration %>%
   subset(
@@ -125,6 +194,39 @@ all_calibration %>%
 ggsave("shareseq_cellcount_cutoff.pdf", width = 4, height = 2.5)
 ggsave("shareseq_cellcount_cutoff.svg", width = 4, height = 2.5)
 
+# Plot initial decoy results
+all_calibration %>%
+  subset(
+    T & 
+      knockoff_type %in% c("gaussian") &
+      tf_activity_type == "rna"  &
+      condition_on == "none"     & 
+      # cell_count_cutoff == 10    & 
+      error_mode == "none"       &            
+      seed==1                    &
+      require_motif_support == F & 
+      only_motif_support == F    &
+      grepl("decoy", evaluation)  
+  ) %>% 
+  ggplot() +
+  geom_abline(aes(slope = 1, intercept = 0)) +
+  geom_point(aes(
+    x = expected_fdr, 
+    y = observed_fdr,
+    color = as.character(cell_count_cutoff) )) +
+  ggtitle("TRN inference on multi-omics data", "Real data") + 
+  theme(text = element_text(family = "ArialMT")) +  
+  scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
+  scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
+  facet_grid(~celltype) + 
+  labs(color = "Cell count cutoff") + 
+  xlab("Expected FDR") + 
+  ylab("Observed proportion of decoys") + 
+  theme(legend.position = "bottom") +
+  geom_hline(aes(yintercept = 100/1078))
+ggsave("shareseq_cellcount_cutoff_decoys.pdf", width = 4, height = 2.5)
+ggsave("shareseq_cellcount_cutoff_decoys.svg", width = 4, height = 2.5)
+
 # Plot results with/without error in X
 all_calibration %>%
   subset(
@@ -138,7 +240,7 @@ all_calibration %>%
       seed==1                    &
       require_motif_support == F & 
       only_motif_support == F    &
-      grepl("chip", evaluation)  == F
+      grepl("simulated", evaluation)
   ) %>% 
   ggplot() +
   geom_abline(aes(slope = 1, intercept = 0)) +

@@ -36,7 +36,8 @@ conditions = Reduce(
     conditions, 
     dplyr::mutate(conditions, celltype="keratinocyte"),
     dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="pbmc"),
-    dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="tcell")
+    dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="tcell"),
+    dplyr::mutate(subset(conditions, cell_count_cutoff < 500), celltype="pbmc_subset")
   )
 )
 rownames(conditions) = NULL
@@ -74,6 +75,7 @@ do_one = function(condition_idx, reuse_results = F){
       dir.create(new_wd, recursive = T, showWarnings = F)
       withr::with_dir( new_wd, {
         if(!reuse_results){
+          normalized_data$tf_expression %>% dim %>% write.csv("tf_expression_dimensions.csv")
           
           # For this analysis, we want expression centered and scaled
           # For genes with zero variance, esp after downsampling,
@@ -86,6 +88,15 @@ do_one = function(condition_idx, reuse_results = F){
           normalized_data$tf_expression       %<>% apply(2, safe_scale)
           normalized_data$tf_expression_noisy %<>% apply(2, safe_scale)
           normalized_data$motif_activity %<>% apply(2, safe_scale)
+          # Add decoy TF's: correlated at r^2 = 0.9 with 100 randomly chosen TF's, but conditionally independent from targets. 
+          # R^2=0.9 is determined by the factor of 1/3 in the code.
+          decoy_parents = sample(colnames(normalized_data$tf_expression), 100, replace = F)
+          decoys = normalized_data$tf_expression[, decoy_parents] 
+          decoys = decoys + (1/3)*matrix( rnorm(prod(dim(decoys))), nrow = nrow(decoys), ncol = ncol(decoys) )
+          colnames(decoys) = paste0("DECOY_", decoy_parents)
+          normalized_data$tf_expression %<>% cbind(decoys)
+          normalized_data$tf_expression_noisy %<>% cbind(decoys)
+          
           # Choose a measure of TF activity
           if(tf_activity_type == "motif"){
             tf_activity = normalized_data$motif_activity
@@ -110,7 +121,7 @@ do_one = function(condition_idx, reuse_results = F){
             tf_activity =       cbind(         normalized_data$motif_activity,           normalized_data$tf_expression)
             colnames(tf_activity) = c(colnames(normalized_data$motif_activity), colnames(normalized_data$tf_expression))
           } else if(tf_activity_type=="rna"){
-            tf_activity = normalized_data$tf_expression
+            tf_activity =                    normalized_data$tf_expression
             colnames(tf_activity) = colnames(normalized_data$tf_expression)
           } else{
             stop("tf_activity_type must be 'rna' or 'motif' or 'both'")
@@ -120,7 +131,7 @@ do_one = function(condition_idx, reuse_results = F){
             tf_activity_before_noise = tf_activity
           } else {
             stopifnot("Unless tf_activity_type is 'rna', error_mode must be 'none'."=tf_activity_type=="rna")
-            tf_activity = normalized_data$tf_expression_noisy
+            tf_activity              = normalized_data$tf_expression_noisy
             tf_activity_before_noise = normalized_data$tf_expression
           } 
           # Add covariates / surrogate variables
@@ -271,7 +282,7 @@ do_one = function(condition_idx, reuse_results = F){
         DF = read.csv("all_hypotheses.csv.gz")
         DF = subset(DF, is_testable)
         cat("\n", as.character(Sys.time()), "\n")
-        cat("\nChecking calibration \n")
+        cat("\nChecking calibration vs chip \n")
         calibration = list()
         for(fdr in c(1:100)/100){
           calibration[[100*fdr]] =
@@ -289,6 +300,27 @@ do_one = function(condition_idx, reuse_results = F){
         dir.create("calibration", showWarnings = F)
         write.csv(calibration, "calibration/chip_calibration.csv")
         
+        DF = read.csv("all_hypotheses.csv.gz")
+        cat("\n", as.character(Sys.time()), "\n")
+        cat("\nChecking calibration via decoys \n")
+        calibration = list()
+        for(fdr in c(1:100)/100){
+          calibration[[100*fdr]] =
+            DF %>%
+            subset( q < fdr ) %>%
+            dplyr::mutate( is_decoy = grepl( "^DECOY", Gene1 ) ) %>%
+            dplyr::summarize(
+              empirical_fdr = mean( is_decoy, na.rm = T ),
+              num_discoveries = sum( !is.na( is_decoy ) )
+            ) %>%
+            subset(!is.na(empirical_fdr)) %>%
+            dplyr::mutate(nominal_fdr = fdr)
+        }
+        calibration %<>% data.table::rbindlist()
+        calibration %<>% dplyr::mutate( moe_95 = 1.96 * sqrt( empirical_fdr * ( 1 - empirical_fdr ) / num_discoveries ) )
+        dir.create("calibration", showWarnings = F)
+        write.csv(calibration, "calibration/decoy_calibration.csv")
+        
         # Plot and save calibration
         ggplot(calibration) +
           geom_point(aes(x = nominal_fdr, y = empirical_fdr)) +
@@ -304,15 +336,16 @@ do_one = function(condition_idx, reuse_results = F){
       })
     })
   })
+  return()
 }
-
-
-
 
 cat("\n", as.character(Sys.time()), "\n")
 cat("Starting threads for different experiments. See logs/ for progress.\n")
 # Try to re-use any existing results (this is useful for interacting with the code)
-results = lapply(seq(nrow(conditions)), do_one, reuse_results = F)
+results = lapply(
+  seq(nrow(conditions)),
+  do_one, 
+  reuse_results = F)
 print(results)
 # Redo failed runs
 todo = which(!sapply(results, is.null))
