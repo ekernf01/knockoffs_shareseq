@@ -4,31 +4,31 @@ source("../scripts/setup.R")
 conditions = read.table(
   header = T,
   text =
-    "knockoff_type tf_activity_type condition_on cell_count_cutoff error_mode seed celltype require_motif_support only_motif_support
-gaussian   rna none  10       none 1 skin F  F
-gaussian   rna none 100       none 1 skin F  F
-gaussian   rna none 500       none 1 skin F  F
-permuted   rna none  10       none 1 skin F  F
-permuted   rna none 100       none 1 skin F  F
-permuted   rna none 500       none 1 skin F  F
-gaussian   rna none  10   resample 1 skin F  F
-gaussian   rna none 100   resample 1 skin F  F
-gaussian   rna none 500   resample 1 skin F  F
-gaussian motif none  10       none 1 skin F  F
-gaussian motif none 100       none 1 skin F  F
-gaussian motif none 500       none 1 skin F  F
-gaussian  both none  10       none 1 skin F  F
-gaussian  both none 100       none 1 skin F  F
-gaussian  both none 500       none 1 skin F  F
-gaussian  both  pca  10       none 1 skin F  F
-gaussian  both  pca 100       none 1 skin F  F
-gaussian  both  pca 500       none 1 skin F  F
-gaussian  both  pca  10       none 1 skin  T F
-gaussian  both  pca 100       none 1 skin  T F
-gaussian  both  pca 500       none 1 skin  T F
-gaussian  both  pca  10       none 1 skin F   T
-gaussian  both  pca 100       none 1 skin F   T
-gaussian  both  pca 500       none 1 skin F   T
+    "knockoff_type tf_activity_type condition_on cell_count_cutoff error_mode seed celltype require_motif_support only_motif_support include_decoys
+gaussian   rna none  10       none 1 skin F  F  F
+gaussian   rna none 100       none 1 skin F  F  F
+gaussian   rna none 500       none 1 skin F  F  F
+permuted   rna none  10       none 1 skin F  F  F
+permuted   rna none 100       none 1 skin F  F  F
+permuted   rna none 500       none 1 skin F  F  F
+gaussian   rna none  10   resample 1 skin F  F  F
+gaussian   rna none 100   resample 1 skin F  F  F
+gaussian   rna none 500   resample 1 skin F  F  F
+gaussian motif none  10       none 1 skin F  F  F
+gaussian motif none 100       none 1 skin F  F  F
+gaussian motif none 500       none 1 skin F  F  F
+gaussian  both none  10       none 1 skin F  F  F
+gaussian  both none 100       none 1 skin F  F  F
+gaussian  both none 500       none 1 skin F  F  F
+gaussian  both  pca  10       none 1 skin F  F  F
+gaussian  both  pca 100       none 1 skin F  F  F
+gaussian  both  pca 500       none 1 skin F  F  F
+gaussian  both  pca  10       none 1 skin  T F  F
+gaussian  both  pca 100       none 1 skin  T F  F
+gaussian  both  pca 500       none 1 skin  T F  F
+gaussian  both  pca  10       none 1 skin F   T F
+gaussian  both  pca 100       none 1 skin F   T F
+gaussian  both  pca 500       none 1 skin F   T F
 ")
 conditions = Reduce(
   rbind, 
@@ -90,12 +90,14 @@ do_one = function(condition_idx, reuse_results = F){
           normalized_data$motif_activity %<>% apply(2, safe_scale)
           # Add decoy TF's: correlated at r^2 = 0.9 with 100 randomly chosen TF's, but conditionally independent from targets. 
           # R^2=0.9 is determined by the factor of 1/3 in the code.
-          decoy_parents = sample(colnames(normalized_data$tf_expression), 100, replace = F)
-          decoys = normalized_data$tf_expression[, decoy_parents] 
-          decoys = decoys + (1/3)*matrix( rnorm(prod(dim(decoys))), nrow = nrow(decoys), ncol = ncol(decoys) )
-          colnames(decoys) = paste0("DECOY_", decoy_parents)
-          normalized_data$tf_expression %<>% cbind(decoys)
-          normalized_data$tf_expression_noisy %<>% cbind(decoys)
+          if(include_decoys){
+            decoy_parents = sample(colnames(normalized_data$tf_expression), 100, replace = F)
+            decoys = normalized_data$tf_expression[, decoy_parents] 
+            decoys = decoys + (1/3)*matrix( rnorm(prod(dim(decoys))), nrow = nrow(decoys), ncol = ncol(decoys) )
+            colnames(decoys) = paste0("DECOY_", decoy_parents)
+            normalized_data$tf_expression %<>% cbind(decoys)
+            normalized_data$tf_expression_noisy %<>% cbind(decoys)
+          }
           
           # Choose a measure of TF activity
           if(tf_activity_type == "motif"){
