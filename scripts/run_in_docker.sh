@@ -21,8 +21,8 @@ mv human_tfs ~/datalake
 cd knockoffs_shareseq
 
 # Change this if you want to modify experiments without overwriting previous results
-mkdir v14
-cd v14
+mkdir v18
+cd v18
 
 mkdir logs
 nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &

@@ -39,7 +39,8 @@ mv human_tfs ~/datalake
 cd knockoffs_shareseq
 
 # Change this if you want to run a new set of conditions
-mkdir v14 && cd v14
+mkdir v18 
+cd v18
 
 # Install some R packages
 mkdir logs
