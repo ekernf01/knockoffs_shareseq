@@ -52,7 +52,7 @@ condition_idx = 1 # For interactive debugging
 #' @param tf_activity 'rna' or 'motif' or 'both'. How to extract TF activities. 
 #' @param condition_on 'none' or 'pca.' if 'pca', then include the top 10 PC's from both ATAC and RNA data.
 #' @param cell_count_cutoff If a cluster has fewer cells than this, it gets excluded from our analysis.
-#' @param error_mode If 'none', take no special action. If 'resample', replace mRNA count Xij with a Poisson(Xij). If 'downsample', use Seurat's SampleUMI function to thin out the data.
+#' @param error_mode If 'none', take no special action. If 'resample', replace mRNA count Xij with a Poisson(Xij). 
 #' @param seed Random seed in case you want to replicate experiments. 
 #' @param celltype skin: all the mouse skin SHARE data. keratinocyte: a subset of the mouse skin SHARE data. pbmc: the human data. tcell: a subset of the pbmc data.
 #' @param require_motif_support If T, retain an edge only when there is a motif for the TF in a nearby open chromatin region.

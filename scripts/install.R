@@ -10,12 +10,11 @@ pv  = read.table(header = 1, text =
   "package version
 tidyverse 1.3.1
 magrittr 2.0.3
-Matrix 1.6.1
 ggplot2 3.4.2
 irlba 2.3.3
 data.table 1.14.8
 devtools 2.4.2
-Seurat 4.3.0.1
+Matrix 1.6.1
 BiocManager 1.30.16
 knockoff 0.3.3
 vita 1.0.0

@@ -8,7 +8,6 @@ suppressPackageStartupMessages({
   library("DelayedArray")
   library("HDF5Array")
   library("scater")
-  library("Seurat")
   library("scran")
   library("optparse")
   library("SummarizedExperiment")

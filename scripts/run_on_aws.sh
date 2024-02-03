@@ -8,13 +8,14 @@ git clone https://github.com/ekernf01/rlookc.git
 # Install aws cli, build-essential (c compiler), git, curl, and R v4
 echo "Installing software..."
 sudo apt-get update -qq
-sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core cmake libudunits2-dev libgsl0-dev libgmp3-dev
+sudo apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev libfontconfig1-dev build-essential awscli gdebi-core cmake libudunits2-dev libgsl0-dev libgmp3-dev libglpk-dev 
 R_VERSION=4.1.2
 curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-${R_VERSION}_1_amd64.deb
 sudo gdebi -n r-${R_VERSION}_1_amd64.deb
 sudo ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R
 sudo ln -s /opt/R/${R_VERSION}/bin/Rscript /usr/local/bin/Rscript
 R --version # 4.1.2 desired
+Rscript --version # 4.1.2 desired
 
 # Retrieve the datasets used.
 echo "Fetching data..."
