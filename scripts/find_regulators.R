@@ -351,7 +351,7 @@ results = lapply(
 print(results)
 # Redo failed runs
 todo = which(!sapply(results, is.null))
-results = lapply(todo, do_one, first_job = todo[[1]])
+results = lapply(todo, do_one)
 print(results)
 cat("\n", as.character(Sys.time()), "\n")
 cat("Done.\n")

@@ -28,7 +28,7 @@ unzip chip-atlas.zip
 unzip share_seq.zip
 unzip multiome_10x.zip
 unzip mouse_tfs.zip
-unzip human_tfs.zip
+unzip human_tfs.zips
 mkdir ~/datalake
 mv chip-atlas ~/datalake
 mv share_seq ~/datalake
@@ -51,10 +51,6 @@ nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &
 wait
 # We do three re-tries because sometimes a job fails, e.g. out of memory. 
 # It's written in a way that saves some work and picks up where it left off to a limited extent.
-nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
-wait
-nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
-wait
 nohup Rscript ../scripts/find_regulators.R  &> logs/knockoffs.txt &
 wait
 # Finally, make the plots. 

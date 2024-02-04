@@ -26,7 +26,8 @@ dbplyr 2.3.4"
 for(i in rownames(pv)){
   remotes::install_version(
     pv[i, "package"],
-    version = pv[i, "version"],
+    version = pv[i, "version"], 
+    type = "source",
     upgrade = "never",
     quiet = TRUE,
     repos = "https://cloud.r-project.org"
