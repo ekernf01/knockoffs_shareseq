@@ -42,6 +42,29 @@ conditions = Reduce(
 )
 rownames(conditions) = NULL
 
+conditions %<>% rbind(
+  read.table(
+  header = T,
+  text =
+    "knockoff_type tf_activity_type condition_on cell_count_cutoff error_mode seed celltype require_motif_support only_motif_support include_decoys
+gaussian   rna none  50       none 1 tcell F  F  F
+gaussian   rna none 200       none 1 tcell F  F  F
+permuted   rna none  50       none 1 tcell F  F  F
+permuted   rna none 200       none 1 tcell F  F  F
+gaussian   rna none  50   resample 1 tcell F  F  F
+gaussian   rna none 200   resample 1 tcell F  F  F
+gaussian motif none  50       none 1 tcell F  F  F
+gaussian motif none 200       none 1 tcell F  F  F
+gaussian  both none  50       none 1 tcell F  F  F
+gaussian  both none 200       none 1 tcell F  F  F
+gaussian  both  pca  50       none 1 tcell F  F  F
+gaussian  both  pca 200       none 1 tcell F  F  F
+gaussian  both  pca  50       none 1 tcell  T F  F
+gaussian  both  pca 200       none 1 tcell  T F  F
+gaussian  both  pca  50       none 1 tcell F   T F
+gaussian  both  pca 200       none 1 tcell F   T F
+"), .
+)
 write.csv(conditions, "experiments_to_run.csv")
 old_wd = getwd()
 condition_idx = 1 # For interactive debugging
