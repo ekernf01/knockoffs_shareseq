@@ -239,7 +239,7 @@ run_chromvar = function(counts, atac_peaks, celltype){
     genome = ifelse(species=="Mus musculus", "mm10", "hg38")
   )
   example_counts <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = t(counts)), rowRanges = atac_peaks_gr)
-  example_counts <- example_counts[rowSums(counts(example_counts)) > 0]
+  example_counts <- example_counts[rowSums(example_counts@assays@data$counts) > 0]
   example_counts <- chromVAR::addGCBias(example_counts, 
                                         genome = genome)
   motifs <- chromVAR::getJasparMotifs(species = species)

@@ -359,7 +359,6 @@ do_one = function(condition_idx, reuse_results = F){
 }
 
 cat("\n", as.character(Sys.time()), "\n")
-cat("Starting threads for different experiments. See logs/ for progress.\n")
 # Try to re-use any existing results (this is useful for interacting with the code)
 results = lapply(
   seq(nrow(conditions)),
