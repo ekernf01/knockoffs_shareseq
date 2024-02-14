@@ -57,12 +57,6 @@ gaussian motif none  50       none 1 tcell F  F  F
 gaussian motif none 200       none 1 tcell F  F  F
 gaussian  both none  50       none 1 tcell F  F  F
 gaussian  both none 200       none 1 tcell F  F  F
-gaussian  both  pca  50       none 1 tcell F  F  F
-gaussian  both  pca 200       none 1 tcell F  F  F
-gaussian  both  pca  50       none 1 tcell  T F  F
-gaussian  both  pca 200       none 1 tcell  T F  F
-gaussian  both  pca  50       none 1 tcell F   T F
-gaussian  both  pca 200       none 1 tcell F   T F
 "), .
 )
 write.csv(conditions, "experiments_to_run.csv")

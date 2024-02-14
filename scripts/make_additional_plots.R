@@ -167,6 +167,7 @@ all_calibration %>%
   subset(
     T & 
       knockoff_type %in% c("gaussian") &
+      celltype %in% c("skin", "keratinocyte", "pbmc", "tcell") &
       tf_activity_type == "rna"  &
       condition_on == "none"     & 
       # cell_count_cutoff == 10    & 
@@ -199,6 +200,7 @@ all_calibration %>%
   subset(
     T & 
       knockoff_type %in% c("gaussian") &
+      celltype %in% c("skin", "keratinocyte", "pbmc", "tcell") &
       tf_activity_type == "rna"  &
       condition_on == "none"     & 
       # cell_count_cutoff == 10    & 
@@ -232,6 +234,7 @@ all_calibration %>%
   subset(
     T & 
       knockoff_type %in% c("gaussian") &
+      celltype %in% c("skin", "keratinocyte", "pbmc", "tcell") &
       tf_activity_type == "rna"  &
       condition_on == "none"     & 
       error_mode == "resample" &
@@ -266,6 +269,7 @@ all_calibration %>%
   subset(
     T & 
       knockoff_type %in% c("gaussian") &
+      celltype %in% c("skin", "keratinocyte", "pbmc", "tcell") &
       condition_on == "none"     & 
       cell_count_cutoff == 10    &
       # celltype %in% c("pbmc") &
@@ -295,6 +299,7 @@ all_calibration %>%
   subset(
     T & 
       knockoff_type %in% c("gaussian") &
+      celltype %in% c("skin", "keratinocyte", "pbmc", "tcell") &
       tf_activity_type == "both"  &
       error_mode == "none"       &
       seed==1                    &
@@ -326,6 +331,7 @@ all_calibration %>%
   subset(
     T & 
       condition_on == "pca" &
+      celltype %in% c("skin", "keratinocyte", "pbmc", "tcell") &
       cell_count_cutoff == 10 &
       tf_activity_type=="both" &
       grepl("chip", evaluation)  == T 

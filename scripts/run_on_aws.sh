@@ -19,7 +19,7 @@ Rscript --version # 4.1.2 desired
 
 # Retrieve the datasets used.
 echo "Fetching data..."
-curl https://zenodo.org/record/10037580/files/chip-atlas.zip
+wget https://zenodo.org/record/10037580/files/chip-atlas.zip
 wget https://zenodo.org/record/10037580/files/share_seq.zip
 wget https://zenodo.org/record/10037580/files/multiome_10x.zip
 wget https://zenodo.org/record/10037580/files/mouse_tfs.zip
@@ -28,13 +28,15 @@ unzip chip-atlas.zip
 unzip share_seq.zip
 unzip multiome_10x.zip
 unzip mouse_tfs.zip
-unzip human_tfs.zips
+unzip human_tfs.zip
 mkdir ~/datalake
 mv chip-atlas ~/datalake
 mv share_seq ~/datalake
 mv multiome_10x ~/datalake
 mv mouse_tfs ~/datalake
 mv human_tfs ~/datalake
+ls datalake
+# Desired result: datalake contains          chip-atlas  human_tfs  mouse_tfs  multiome_10x  share_seq
 
 # Enter the demo repo.
 cd knockoffs_shareseq
@@ -45,8 +47,7 @@ cd v18
 
 # Install some R packages
 mkdir logs
-Rscript ../scripts/install.R          
-Rscript ../scripts/install.R          &> logs/install.txt # Yes, it is necessary to run this twice
+Rscript ../scripts/install.R                &> logs/install.txt 
 nohup Rscript ../scripts/cluster_cells.R    &> logs/cluster.txt &
 wait
 # We do three re-tries because sometimes a job fails, e.g. out of memory. 
