@@ -49,7 +49,7 @@ for(condition_idx in seq(nrow(conditions))){
       read.csv("calibration/decoy_calibration.csv", row.names = 1) %>%
         cbind(evaluation="decoy") %>% 
         sanitize_names,
-        read.csv("calibration/chip_calibration.csv", row.names = 1) %>%
+      read.csv("calibration/chip_calibration.csv", row.names = 1) %>%
         cbind(evaluation="chip") %>% 
         sanitize_names,
       read_simulation_if_exists(error_mode=error_mode)
