@@ -65,7 +65,7 @@ all_calibration$celltype %<>% factor(levels = c("skin", "keratinocyte", "pbmc", 
 all_calibration$tf_activity_type %<>% factor(levels = c("rna", "motif", "both"))
 
 # These plots are for an internal talk
-create_experiment_path(conditions, 49) %>% 
+create_experiment_path(conditions, 49+10) %>% 
   file.path("all_hypotheses.csv.gz") %>%
   read.csv() %>% 
   subset(q <= 0.1, select = "Gene1") %>% 
@@ -82,7 +82,7 @@ create_experiment_path(conditions, 49) %>%
   xlab("out-degree") +
   ylab("frequency") + 
   ggtitle("All PBMC")
-create_experiment_path(conditions, 65) %>% 
+create_experiment_path(conditions, 65+10) %>% 
   file.path("all_hypotheses.csv.gz") %>%
   read.csv() %>% 
   subset(q <= 0.1, select = "Gene1") %>% 
@@ -101,34 +101,44 @@ create_experiment_path(conditions, 65) %>%
   ggtitle("T cell")
 
 
-# Extract a few key numbers mentioned in the text
+# Extract a few key numbers mentioned in the text (number of discoveries in certain analyses)
 total_findings_1_percent = list(
   skin_basic = 
-    create_experiment_path(conditions, 1) %>% 
+    create_experiment_path(conditions, 1+10) %>% 
     file.path("all_hypotheses.csv.gz") %>%
     read.csv() %>% 
     subset(q <= 0.1) %>% 
     nrow,
   pbmc_basic = 
-    create_experiment_path(conditions, 49) %>% 
+    create_experiment_path(conditions, 49+10) %>% 
     file.path("all_hypotheses.csv.gz") %>%
     read.csv() %>% 
     subset(q <= 0.1) %>% 
     nrow, 
   skin_100 = 
-    create_experiment_path(conditions, 2) %>% 
+    create_experiment_path(conditions, 2+10) %>% 
     file.path("all_hypotheses.csv.gz") %>%
     read.csv() %>% 
     subset(q <= 0.1) %>% 
     nrow,
   pbmc_100 = 
-    create_experiment_path(conditions, 50) %>% 
+    create_experiment_path(conditions, 50+10) %>% 
     file.path("all_hypotheses.csv.gz") %>%
     read.csv() %>% 
     subset(q <= 0.1) %>% 
     nrow
 )
 total_findings_1_percent
+
+# Print the motif network summary stats
+for(i in c(73, 32)){
+  x = create_experiment_path(conditions, i) %>% 
+    file.path("all_hypotheses.csv.gz") %>%
+    read.csv()
+  subset(x, is_testable)$Gene1 %>% unique %>% length %>% print
+  subset(x, is_testable)$Gene2 %>% unique %>% length %>% print
+  subset(x, is_testable)[c("Gene1", "Gene2")] %>% apply(1, paste, collapse = " ") %>% unique %>% length %>% print
+}
 
 # Plot naive versus "shrinkage" (corpcor gaussian) knockoffs
 all_calibration %>%
@@ -152,8 +162,8 @@ all_calibration %>%
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
-  xlab("Expected FDR") + 
-  ylab("Observed FDR")
+  xlab("Reported FDR") + 
+  ylab("True FDR")
 ggsave("shareseq_naive_vs_gaussian.pdf", width = 5, height = 4)
 ggsave("shareseq_naive_vs_gaussian.svg", width = 5, height = 4)
 
@@ -189,8 +199,8 @@ all_calibration %>%
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
   facet_grid(~celltype) + 
   labs(color = "Cell count cutoff") + 
-  xlab("Expected FDR") + 
-  ylab("Observed FDR") + 
+  xlab("Reported FDR") + 
+  ylab("True FDR") + 
   theme(legend.position = "bottom")
 ggsave("shareseq_cellcount_cutoff.pdf", width = 4, height = 2.5)
 ggsave("shareseq_cellcount_cutoff.svg", width = 4, height = 2.5)
@@ -222,7 +232,7 @@ all_calibration %>%
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
   facet_grid(~celltype) + 
   labs(color = "Cell count cutoff") + 
-  xlab("Expected FDR") + 
+  xlab("Reported FDR") + 
   ylab("Observed proportion of decoys") + 
   theme(legend.position = "bottom") +
   geom_hline(aes(yintercept = 100/1078))
@@ -257,8 +267,8 @@ all_calibration %>%
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
   labs(color = "Error mode") + 
-  xlab("Expected FDR") + 
-  ylab("Observed FDR") + 
+  xlab("Reported FDR") + 
+  ylab("True FDR") + 
   labs(color = "Cell count cutoff") + 
   theme(legend.position = "bottom")
 ggsave("shareseq_measurement_error.pdf", width = 5.5, height = 3)
@@ -287,8 +297,8 @@ all_calibration %>%
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = ((0:2)/2) %>% setNames(c("0", "0.5", "1")), limits = 0:1) +  
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1)  + 
-  xlab("Expected FDR") + 
-  ylab("Observed FDR") + 
+  xlab("Reported FDR") + 
+  ylab("True FDR") + 
   theme(legend.position = "bottom") + 
   scale_color_manual(values = c("red", "blue", "purple"))
 ggsave("shareseq_motif_scores.svg", width = 4.5, height = 2.5)
@@ -319,8 +329,8 @@ all_calibration %>%
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
-  xlab("Expected FDR") + 
-  ylab("Observed FDR") + 
+  xlab("Reported FDR") + 
+  ylab("True FDR") + 
   theme(legend.position = "bottom") + 
   scale_color_manual(values = c("green", "black"))
 ggsave("shareseq_condition_confounders.pdf", width = 5.5, height = 3)
@@ -360,8 +370,8 @@ all_calibration %>%
   theme(text = element_text(family = "ArialMT")) +  
   scale_x_continuous(breaks = (0:2)/2, limits = 0:1) +  
   scale_y_continuous(breaks = (0:2)/2, limits = 0:1) + 
-  xlab("Expected FDR") + 
-  ylab("Observed FDR") + 
+  xlab("Reported FDR") + 
+  ylab("True FDR") + 
   theme(legend.position = "bottom") + 
   scale_color_manual(values = c("red", "orange", "yellow"))
 ggsave("shareseq_motif_support.pdf", width = 6, height = 3.5)

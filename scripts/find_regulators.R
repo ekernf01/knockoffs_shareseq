@@ -256,7 +256,7 @@ do_one = function(condition_idx, reuse_results = F){
             DF = get_motif_supported_hypotheses(normalized_data, celltype = celltype)
             DF$Gene1 %<>% toupper()
             DF$Gene2 %<>% toupper()
-            DF$knockoff_stat = 100 + rnorm(nrow(DF)) #these fake knockoff statistics will yield q=0 for all hypotheses
+            DF$knockoff_stat = 100 + rnorm(nrow(DF)) #these fake knockoff statistics will yield q=0 for all hypotheses, so motifs are the only filter as desired.
           } else {
             DF = read.csv("output_knockoffs/knockoff_stats.csv")
             DF$Gene1 %<>% toupper()

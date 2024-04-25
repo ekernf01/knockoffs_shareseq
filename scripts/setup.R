@@ -1,4 +1,4 @@
-# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v18")
+# setwd("~/Desktop/jhu/research/projects/knockoffs/applications/share-seq/v17")
 
 # Setup
 suppressPackageStartupMessages({
