@@ -1,3 +1,7 @@
+# I screwed up the environment a little -- need to install a couple missing deps.
+apt-get install gsl-bin libgsl0-dev
+Rscript -e "BiocManager::install('TFBSTools', update=TRUE, ask=FALSE)"
+
 # Retrieve the datasets used.
 echo "Fetching data..."
 wget https://zenodo.org/record/10037580/files/chip-atlas.zip
