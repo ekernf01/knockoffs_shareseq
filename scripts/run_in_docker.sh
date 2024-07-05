@@ -1,6 +1,6 @@
 # I screwed up the environment a little -- need to install a couple missing deps.
-apt-get install gsl-bin libgsl0-dev
-Rscript -e "BiocManager::install('TFBSTools', 'motifmatchr', update=TRUE, ask=FALSE)"
+apt-get install -y gsl-bin libgsl0-dev
+Rscript -e "BiocManager::install(c('TFBSTools', 'motifmatchr'), update=FALSE, ask=FALSE)"
 
 # Retrieve the datasets used.
 echo "Fetching data..."
