@@ -1,6 +1,6 @@
 # Retrieve the datasets used.
 echo "Fetching data..."
-curl https://zenodo.org/record/10037580/files/chip-atlas.zip
+wget https://zenodo.org/record/10037580/files/chip-atlas.zip
 wget https://zenodo.org/record/10037580/files/share_seq.zip
 wget https://zenodo.org/record/10037580/files/multiome_10x.zip
 wget https://zenodo.org/record/10037580/files/mouse_tfs.zip
@@ -16,6 +16,30 @@ mv share_seq ~/datalake
 mv multiome_10x ~/datalake
 mv mouse_tfs ~/datalake
 mv human_tfs ~/datalake
+
+
+# At this point, the contents of /root/datalake/ should look like:
+# |-- chip-atlas
+# |   |-- BadCellTypes.txt
+# |   |-- analysisList.tab
+# |   |-- filtered_by_celltype
+# |   |-- prepare_download.R
+# |   |-- select_by_cell_type.R
+# |   `-- sources.txt
+# |-- human_tfs
+# |   |-- README.md
+# |   `-- humanTFs.csv
+# |-- mouse_tfs
+# |   |-- Mus_musculus_TF.txt
+# |   |-- Mus_musculus_TF_cofactors.txt
+# |   `-- README.txt
+# |-- multiome_10x
+# |   |-- README.md
+# |   `-- pbmc
+# `-- share_seq
+#     |-- README.md
+#     `-- skin
+
 
 # Enter the demo repo.
 cd knockoffs_shareseq
